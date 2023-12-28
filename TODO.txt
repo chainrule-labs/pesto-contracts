@@ -1,4 +1,7 @@
 
 - ensure only supported: why? lol Just say it on the README
+    -> if don't, it will just revert somewhere along the way.
 
+- making decision to not calculate needed collateral on-chain. This calculation can be done off-chain.
 
+- aave supply approve can be avoided with SupplyWithPermit?

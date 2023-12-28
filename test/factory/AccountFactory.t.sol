@@ -6,7 +6,7 @@ import { Test } from "forge-std/Test.sol";
 import { VmSafe } from "forge-std/Vm.sol";
 
 // Local Imports
-import { AccountFactory } from "src/factory/AccountFactory.sol";
+import { AccountFactory } from "src/AccountFactory.sol";
 import { IAccount } from "src/interfaces/IAccount.sol";
 import { Assets, CONTRACT_DEPLOYER } from "test/factory/common/Constants.t.sol";
 

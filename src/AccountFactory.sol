@@ -2,7 +2,7 @@
 pragma solidity ^0.8.21;
 
 // Local
-import { Account } from "../accounts/Account.sol";
+import { Account } from "src/Account.sol";
 
 /// @title Account Factory
 /// @author deloperator.eth
