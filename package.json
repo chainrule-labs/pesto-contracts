@@ -1,0 +1,39 @@
+{
+	"name": "v1-core",
+	"description": "Onchain shorting via Aave and Uniswap.",
+	"author": "Chain Rule, LLC",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/chainrule-labs/shaave.git"
+	},
+	"scripts": {
+		"commit": "cz",
+		"coverage": "forge coverage --report lcov && npm run coverage:filter && npx lcov-summary lcov.info",
+		"coverage:filter": "lcov -r lcov.info 'test/*' 'src/dependencies/*' -o lcov.info",
+		"format": "forge fmt",
+		"format:check": "forge fmt --check",
+		"lint:check": "solhint --config ./.solhint.json 'src/**/*.sol'",
+		"prepare": "husky install",
+		"test": "forge test --optimize && npm run coverage"
+	},
+	"commitlint": {
+		"extends": [
+			"@commitlint/config-conventional"
+		]
+	},
+	"config": {
+		"commitizen": {
+			"path": "cz-conventional-changelog"
+		}
+	},
+	"devDependencies": {
+		"@commitlint/cli": "^17.8.0",
+		"@commitlint/config-conventional": "^17.8.0",
+		"commitizen": "^4.3.0",
+		"cz-conventional-changelog": "^3.3.0",
+		"husky": "^8.0.0",
+		"lcov-summary": "^1.0.1",
+		"solhint": "^3.6.2"
+	}
+}
