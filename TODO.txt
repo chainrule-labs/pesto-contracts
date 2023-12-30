@@ -5,3 +5,18 @@
 - making decision to not calculate needed collateral on-chain. This calculation can be done off-chain.
 
 - aave supply approve can be avoided with SupplyWithPermit?
+
+
+UNIT TESTS:
+
+Swap service:
+- test that you get output tokens (fork)
+
+Debt service:
+- test that you get debt (fork)
+
+Full short:
+
+- test that all tokens are where they are supposed to be
+- should test for every combo?
+- we run into the problem of potential time variance

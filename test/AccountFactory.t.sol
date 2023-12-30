@@ -3,12 +3,11 @@ pragma solidity ^0.8.21;
 
 // External Imports
 import { Test } from "forge-std/Test.sol";
-import { VmSafe } from "forge-std/Vm.sol";
 
 // Local Imports
 import { AccountFactory } from "src/AccountFactory.sol";
 import { IAccount } from "src/interfaces/IAccount.sol";
-import { Assets, CONTRACT_DEPLOYER } from "test/factory/common/Constants.t.sol";
+import { Assets, CONTRACT_DEPLOYER } from "test/common/Constants.t.sol";
 
 contract AccountFactoryTest is Test {
     /* solhint-disable func-name-mixedcase */
