@@ -7,11 +7,12 @@ import { Test } from "forge-std/Test.sol";
 // Local Imports
 import { DebtServiceHarness } from "test/harness/DebtServiceHarness.t.sol";
 import { DebtUtils } from "test/services/utils/DebtUtils.t.sol";
+import { TokenUtils } from "test/services/utils/TokenUtils.t.sol";
 import { Assets, AAVE_ORACLE, USDC, USDC_HOLDER } from "test/common/Constants.t.sol";
 import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
-contract DebtServiceTest is Test, DebtUtils {
+contract DebtServiceTest is Test, DebtUtils, TokenUtils {
     /* solhint-disable func-name-mixedcase */
 
     // Test Contracts
@@ -41,14 +42,7 @@ contract DebtServiceTest is Test, DebtUtils {
                     debtServices.push(debtService);
 
                     // Fund DebtService with collateral
-                    if (cToken != USDC) {
-                        deal(cToken, address(debtService), assets.maxCAmts(cToken));
-                    } else {
-                        // Work around deal not working for USDC
-                        vm.startPrank(USDC_HOLDER);
-                        IERC20(USDC).transfer(address(debtService), assets.maxCAmts(cToken));
-                        vm.stopPrank();
-                    }
+                    _fund(address(debtService), cToken, assets.maxCAmts(cToken));
                 }
             }
         }
@@ -101,7 +95,7 @@ contract DebtServiceTest is Test, DebtUtils {
     // - It's dToken balance should increase by the amount of debt borrowed.
     // - It should borrow the correct amount, given mocked token prices.
 
-    function test_Borrow(uint256 ltv) public {
+    function testFuzz_Borrow(uint256 _ltv) public {
         for (uint256 i; i < debtServices.length; i++) {
             // Setup
             address debtService = address(debtServices[i]);
@@ -112,11 +106,11 @@ contract DebtServiceTest is Test, DebtUtils {
             uint256 cAmt = assets.maxCAmts(cToken);
 
             // Assumptions
-            vm.assume(ltv > 0 && ltv <= 60);
+            _ltv = bound(_ltv, 1, 60);
 
             // Expectations
             uint256 dAmtExpected = _getDAmt(
-                assets.prices(cToken), assets.prices(dToken), cDecimalConversion, dDecimalConversion, cAmt, ltv
+                assets.prices(cToken), assets.prices(dToken), cDecimalConversion, dDecimalConversion, cAmt, _ltv
             );
 
             // Pre-Act Assertions
@@ -124,7 +118,7 @@ contract DebtServiceTest is Test, DebtUtils {
             assertEq(IERC20(dToken).balanceOf(debtService), 0);
 
             // Act
-            uint256 dAmt = debtServices[i].exposed_borrow(cAmt, ltv);
+            uint256 dAmt = debtServices[i].exposed_borrow(cAmt, _ltv);
 
             // Assertions
             assertEq(IERC20(cToken).balanceOf(debtService), 0);

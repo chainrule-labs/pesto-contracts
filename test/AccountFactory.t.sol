@@ -12,14 +12,25 @@ import { Assets, CONTRACT_DEPLOYER } from "test/common/Constants.t.sol";
 contract AccountFactoryTest is Test {
     /* solhint-disable func-name-mixedcase */
 
-    // Test Storage
+    // Test Contracts
     AccountFactory public accountFactory;
     Assets public assets;
 
+    // Test Storage
+    uint256 public mainnetFork;
+
     function setUp() public {
+        // Setup: use mainnet fork
+        mainnetFork = vm.createFork(vm.envString("RPC_URL"));
+        vm.selectFork(mainnetFork);
+
         vm.prank(CONTRACT_DEPLOYER);
         accountFactory = new AccountFactory();
         assets = new Assets();
+    }
+
+    function test_ActiveFork() public {
+        assertEq(vm.activeFork(), mainnetFork, "vm.activeFork() != mainnetFork");
     }
 
     function test_CreateAccount() public {
@@ -46,19 +57,24 @@ contract AccountFactoryTest is Test {
         // Act
         for (uint256 i; i < supportedAssets.length; i++) {
             for (uint256 j; j < supportedAssets.length; j++) {
-                for (uint256 k; k < supportedAssets.length; k++) {
-                    account = accountFactory.createAccount(supportedAssets[i], supportedAssets[j], supportedAssets[k]);
-                    owner = IAccount(account).owner();
-                    col = IAccount(account).col();
-                    debt = IAccount(account).debt();
-                    base = IAccount(account).base();
+                if (j != i) {
+                    for (uint256 k; k < supportedAssets.length; k++) {
+                        if (k != j) {
+                            account =
+                                accountFactory.createAccount(supportedAssets[i], supportedAssets[j], supportedAssets[k]);
+                            owner = IAccount(account).owner();
+                            col = IAccount(account).cToken();
+                            debt = IAccount(account).dToken();
+                            base = IAccount(account).bToken();
 
-                    // Assertions
-                    assertNotEq(account, address(0));
-                    assertEq(owner, address(this));
-                    assertEq(col, supportedAssets[i]);
-                    assertEq(debt, supportedAssets[j]);
-                    assertEq(base, supportedAssets[k]);
+                            // Assertions
+                            assertNotEq(account, address(0));
+                            assertEq(owner, address(this));
+                            assertEq(col, supportedAssets[i]);
+                            assertEq(debt, supportedAssets[j]);
+                            assertEq(base, supportedAssets[k]);
+                        }
+                    }
                 }
             }
         }

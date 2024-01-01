@@ -39,7 +39,7 @@ contract DebtService {
      * col_amt_usd = col_amt_wei * cPrice (decimals: 18 + 8 => 26)
      * debt_amt_usd = col_amt_usd * _ltv / 100 (decimals: 26)
      * debt_amt_usd_d_decimals = debt_amt_usd / _dDecimalConversion (decimals: 26 - (18 - dDecimals))
-     * debt_amt_d_decimals = debt_amt_usd_d_decimals / dPrice (decimals: dDecimals)
+     * dAmt = debt_amt_d_decimals = debt_amt_usd_d_decimals / dPrice (decimals: dDecimals)
      */
     function _borrow(uint256 _cAmt, uint256 _ltv) internal returns (uint256 dAmt) {
         // 1. Supply collateral to Aave

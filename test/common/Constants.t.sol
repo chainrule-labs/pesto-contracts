@@ -19,6 +19,7 @@ contract Assets {
     address[4] public supported = [USDC, DAI, WETH, WBTC];
     mapping(address => uint8) public decimals;
     mapping(address => uint256) public maxCAmts;
+    mapping(address => uint256) public minCAmts;
     mapping(address => uint256) public prices;
 
     constructor() {
@@ -33,6 +34,12 @@ contract Assets {
         maxCAmts[DAI] = 100_000 * 10 ** 18;
         maxCAmts[WETH] = 50 * 10 ** 18;
         maxCAmts[WBTC] = 2 * 10 ** 8;
+
+        // Set min collateral amounts
+        minCAmts[USDC] = 100 * 10 ** 6;
+        minCAmts[DAI] = 100 * 10 ** 18;
+        minCAmts[WETH] = 0.01 * 10 ** 18;
+        minCAmts[WBTC] = 0.001 * 10 ** 8;
 
         // Set prices
         prices[USDC] = 1 * 10 ** 8;
