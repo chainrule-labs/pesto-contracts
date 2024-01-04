@@ -2,12 +2,12 @@
 pragma solidity ^0.8.21;
 
 // Local
-import { Account } from "src/Account.sol";
+import { Position } from "src/Position.sol";
 
-/// @title Account Factory
+/// @title Position Factory
 /// @author deloperator.eth
 /// @notice Creates and stores user accounts
-contract AccountFactory {
+contract PositionFactory {
     // Constants: no SLOAD to save gas
     address private constant CONTRACT_DEPLOYER = 0x0a5B347509621337cDDf44CBCf6B6E7C9C908CD2;
 
@@ -25,7 +25,7 @@ contract AccountFactory {
     function createAccount(address _col, address _debt, address _base) public payable returns (address account) {
         if (accounts[msg.sender][_col][_debt][_base] != address(0)) revert AccountExists();
 
-        account = address(new Account(msg.sender, _col, _debt, _base));
+        account = address(new Position(msg.sender, _col, _debt, _base));
 
         accounts[msg.sender][_col][_debt][_base] = account;
     }

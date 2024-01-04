@@ -74,15 +74,15 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
 
         // Assert correct decimals and conversions
         for (uint256 i; i < debtServices.length; i++) {
-            uint8 cDecimals = assets.decimals(debtServices[i].cToken());
-            uint8 dDecimals = assets.decimals(debtServices[i].dToken());
+            uint8 cDecimals = assets.decimals(debtServices[i].C_TOKEN());
+            uint8 dDecimals = assets.decimals(debtServices[i].D_TOKEN());
             uint64 cDecimalConversion = uint64(10 ** (18 - cDecimals));
             uint64 dDecimalConversion = uint64(10 ** (18 - dDecimals));
             uint256 cresult = 10 ** uint256(cDecimals) * uint256(cDecimalConversion);
             uint256 dresult = 10 ** uint256(dDecimals) * uint256(dDecimalConversion);
 
-            assertEq(debtServices[i].cDecimals(), cDecimals);
-            assertEq(debtServices[i].dDecimals(), dDecimals);
+            assertEq(debtServices[i].C_DECIMALS(), cDecimals);
+            assertEq(debtServices[i].D_DECIMALS(), dDecimals);
             assertEq(debtServices[i].exposed_cDecimalConversion(), cDecimalConversion);
             assertEq(debtServices[i].exposed_dDecimalConversion(), dDecimalConversion);
             assertEq(cresult, 10 ** 18);
@@ -99,8 +99,8 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
         for (uint256 i; i < debtServices.length; i++) {
             // Setup
             address debtService = address(debtServices[i]);
-            address cToken = debtServices[i].cToken();
-            address dToken = debtServices[i].dToken();
+            address cToken = debtServices[i].C_TOKEN();
+            address dToken = debtServices[i].D_TOKEN();
             uint256 cDecimalConversion = debtServices[i].exposed_cDecimalConversion();
             uint256 dDecimalConversion = debtServices[i].exposed_dDecimalConversion();
             uint256 cAmt = assets.maxCAmts(cToken);

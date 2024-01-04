@@ -10,11 +10,11 @@ contract DebtServiceHarness is DebtService {
     constructor(address _cToken, address _dToken) DebtService(_cToken, _dToken) { }
 
     function exposed_cDecimalConversion() external view returns (uint64) {
-        return _cDecimalConversion;
+        return _C_DEC_CONVERSION;
     }
 
     function exposed_dDecimalConversion() external view returns (uint64) {
-        return _dDecimalConversion;
+        return _D_DEC_CONVERSION;
     }
 
     function exposed_borrow(uint256 _cAmt, uint256 _ltv) external returns (uint256 amount) {

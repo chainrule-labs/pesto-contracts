@@ -5,15 +5,15 @@ pragma solidity ^0.8.21;
 import { Test } from "forge-std/Test.sol";
 
 // Local Imports
-import { AccountFactory } from "src/AccountFactory.sol";
-import { IAccount } from "src/interfaces/IAccount.sol";
+import { PositionFactory } from "src/PositionFactory.sol";
+import { IPosition } from "src/interfaces/IPosition.sol";
 import { Assets, CONTRACT_DEPLOYER } from "test/common/Constants.t.sol";
 
-contract AccountFactoryTest is Test {
+contract PositionFactoryTest is Test {
     /* solhint-disable func-name-mixedcase */
 
     // Test Contracts
-    AccountFactory public accountFactory;
+    PositionFactory public positionFactory;
     Assets public assets;
 
     // Test Storage
@@ -25,7 +25,7 @@ contract AccountFactoryTest is Test {
         vm.selectFork(mainnetFork);
 
         vm.prank(CONTRACT_DEPLOYER);
-        accountFactory = new AccountFactory();
+        positionFactory = new PositionFactory();
         assets = new Assets();
     }
 
@@ -46,7 +46,7 @@ contract AccountFactoryTest is Test {
         for (uint256 i; i < supportedAssets.length; i++) {
             for (uint256 j; j < supportedAssets.length; j++) {
                 for (uint256 k; k < supportedAssets.length; k++) {
-                    account = accountFactory.accounts(
+                    account = positionFactory.accounts(
                         address(this), supportedAssets[i], supportedAssets[j], supportedAssets[k]
                     );
                     assertEq(account, address(0));
@@ -60,12 +60,13 @@ contract AccountFactoryTest is Test {
                 if (j != i) {
                     for (uint256 k; k < supportedAssets.length; k++) {
                         if (k != j) {
-                            account =
-                                accountFactory.createAccount(supportedAssets[i], supportedAssets[j], supportedAssets[k]);
-                            owner = IAccount(account).owner();
-                            col = IAccount(account).cToken();
-                            debt = IAccount(account).dToken();
-                            base = IAccount(account).bToken();
+                            account = positionFactory.createAccount(
+                                supportedAssets[i], supportedAssets[j], supportedAssets[k]
+                            );
+                            owner = IPosition(account).OWNER();
+                            col = IPosition(account).C_TOKEN();
+                            debt = IPosition(account).D_TOKEN();
+                            base = IPosition(account).B_TOKEN();
 
                             // Assertions
                             assertNotEq(account, address(0));
@@ -90,10 +91,11 @@ contract AccountFactoryTest is Test {
         for (uint256 i; i < supportedAssets.length; i++) {
             for (uint256 j; j < supportedAssets.length; j++) {
                 for (uint256 k; k < supportedAssets.length; k++) {
-                    account = accountFactory.createAccount(supportedAssets[i], supportedAssets[j], supportedAssets[k]);
+                    account = positionFactory.createAccount(supportedAssets[i], supportedAssets[j], supportedAssets[k]);
                     /// @dev Duplicate account creation should revert
-                    vm.expectRevert(AccountFactory.AccountExists.selector);
-                    duplicate = accountFactory.createAccount(supportedAssets[i], supportedAssets[j], supportedAssets[k]);
+                    vm.expectRevert(PositionFactory.AccountExists.selector);
+                    duplicate =
+                        positionFactory.createAccount(supportedAssets[i], supportedAssets[j], supportedAssets[k]);
                 }
             }
         }

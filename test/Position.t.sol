@@ -6,26 +6,26 @@ import { Test } from "forge-std/Test.sol";
 import { VmSafe } from "forge-std/Vm.sol";
 
 // Local Imports
-import { AccountFactory } from "src/AccountFactory.sol";
+import { PositionFactory } from "src/PositionFactory.sol";
 import { Assets, AAVE_ORACLE, CONTRACT_DEPLOYER, DAI, USDC, WBTC, WETH } from "test/common/Constants.t.sol";
 import { TokenUtils } from "test/services/utils/TokenUtils.t.sol";
 import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
-import { IAccount } from "src/interfaces/IAccount.sol";
+import { IPosition } from "src/interfaces/IPosition.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
-contract AccountTest is Test, TokenUtils {
+contract PositionTest is Test, TokenUtils {
     /* solhint-disable func-name-mixedcase */
 
-    struct TestAccount {
+    struct TestPosition {
         address addr;
         address cToken;
         address bToken;
     }
 
     // Test contracts
-    AccountFactory public accountFactory;
+    PositionFactory public positionFactory;
     Assets public assets;
-    TestAccount[] public accounts;
+    TestPosition[] public positions;
 
     // Test Storage
     address public accountAddr;
@@ -43,11 +43,11 @@ contract AccountTest is Test, TokenUtils {
         assets = new Assets();
         address[4] memory supportedAssets = assets.getSupported();
 
-        // Deploy AccountFactory
+        // Deploy PositionFactory
         vm.prank(CONTRACT_DEPLOYER);
-        accountFactory = new AccountFactory();
+        positionFactory = new PositionFactory();
 
-        // Deploy and store all possible accounts
+        // Deploy and store all possible positions
         for (uint256 i; i < supportedAssets.length; i++) {
             address cToken = supportedAssets[i];
             for (uint256 j; j < supportedAssets.length; j++) {
@@ -55,14 +55,14 @@ contract AccountTest is Test, TokenUtils {
                     address dToken = supportedAssets[j];
                     for (uint256 k; k < supportedAssets.length; k++) {
                         address bToken = supportedAssets[k];
-                        // Exclude accounts with no pool
+                        // Exclude positions with no pool
                         bool noPool = (dToken == USDC && bToken == DAI) || (dToken == DAI && bToken == USDC);
                         bool poolExists = !noPool;
                         if (k != j && poolExists) {
-                            accountAddr = accountFactory.createAccount(cToken, dToken, bToken);
-                            TestAccount memory newAccount =
-                                TestAccount({ addr: accountAddr, cToken: cToken, bToken: bToken });
-                            accounts.push(newAccount);
+                            accountAddr = positionFactory.createAccount(cToken, dToken, bToken);
+                            TestPosition memory newAccount =
+                                TestPosition({ addr: accountAddr, cToken: cToken, bToken: bToken });
+                            positions.push(newAccount);
                         }
                     }
                 }
@@ -94,11 +94,11 @@ contract AccountTest is Test, TokenUtils {
         // Take snapshot
         uint256 id = vm.snapshot();
 
-        for (uint256 i; i < accounts.length; i++) {
+        for (uint256 i; i < positions.length; i++) {
             // Test variables
-            address addr = accounts[i].addr;
-            address cToken = accounts[i].cToken;
-            address bToken = accounts[i].bToken;
+            address addr = positions[i].addr;
+            address cToken = positions[i].cToken;
+            address bToken = positions[i].bToken;
 
             // Bound fuzzed variables
             _ltv = bound(_ltv, 1, 60);
@@ -116,7 +116,7 @@ contract AccountTest is Test, TokenUtils {
 
             // Act
             vm.recordLogs();
-            IAccount(addr).short(_cAmt, _ltv, 0, 3000);
+            IPosition(addr).short(_cAmt, _ltv, 0, 3000);
             VmSafe.Log[] memory entries = vm.getRecordedLogs();
 
             // Post-act balances

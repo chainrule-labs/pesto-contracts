@@ -13,20 +13,20 @@ contract DebtService {
     address private constant AAVE_ORACLE = 0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7;
 
     // Immutables: no SLOAD to save gas
-    uint8 public immutable cDecimals;
-    uint8 public immutable dDecimals;
-    uint64 internal immutable _cDecimalConversion;
-    uint64 internal immutable _dDecimalConversion;
-    address public immutable cToken;
-    address public immutable dToken;
+    uint8 public immutable C_DECIMALS;
+    uint8 public immutable D_DECIMALS;
+    uint64 internal immutable _C_DEC_CONVERSION;
+    uint64 internal immutable _D_DEC_CONVERSION;
+    address public immutable C_TOKEN;
+    address public immutable D_TOKEN;
 
     constructor(address _cToken, address _dToken) {
-        cToken = _cToken;
-        dToken = _dToken;
-        cDecimals = IERC20Metadata(_cToken).decimals();
-        dDecimals = IERC20Metadata(_dToken).decimals();
-        _cDecimalConversion = uint64(10 ** (18 - cDecimals));
-        _dDecimalConversion = uint64(10 ** (18 - dDecimals));
+        C_TOKEN = _cToken;
+        D_TOKEN = _dToken;
+        C_DECIMALS = IERC20Metadata(_cToken).decimals();
+        D_DECIMALS = IERC20Metadata(_dToken).decimals();
+        _C_DEC_CONVERSION = uint64(10 ** (18 - C_DECIMALS));
+        _D_DEC_CONVERSION = uint64(10 ** (18 - D_DECIMALS));
     }
 
     /**
@@ -35,25 +35,67 @@ contract DebtService {
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
      * @return dAmt The dAmt of the debt token borrowed (units: debt token decimals).
      * @dev Debt dAmt is calculated as follows:
-     * col_amt_wei = _cAmt * _cDecimalConversion (decimals: 18)
+     * col_amt_wei = _cAmt * _C_DEC_CONVERSION (decimals: 18)
      * col_amt_usd = col_amt_wei * cPrice (decimals: 18 + 8 => 26)
      * debt_amt_usd = col_amt_usd * _ltv / 100 (decimals: 26)
-     * debt_amt_usd_d_decimals = debt_amt_usd / _dDecimalConversion (decimals: 26 - (18 - dDecimals))
-     * dAmt = debt_amt_d_decimals = debt_amt_usd_d_decimals / dPrice (decimals: dDecimals)
+     * debt_amt_usd_d_decimals = debt_amt_usd / _D_DEC_CONVERSION (decimals: 26 - (18 - D_DECIMALS))
+     * dAmt = debt_amt_d_decimals = debt_amt_usd_d_decimals / dPrice (decimals: D_DECIMALS)
      */
     function _borrow(uint256 _cAmt, uint256 _ltv) internal returns (uint256 dAmt) {
         // 1. Supply collateral to Aave
-        IERC20(cToken).approve(AAVE_POOL, _cAmt);
-        IPool(AAVE_POOL).supply(cToken, _cAmt, address(this), 0);
+        IERC20(C_TOKEN).approve(AAVE_POOL, _cAmt);
+        IPool(AAVE_POOL).supply(C_TOKEN, _cAmt, address(this), 0);
 
         // 2. Get asset prices USD
-        uint256 cPrice = IAaveOracle(AAVE_ORACLE).getAssetPrice(cToken);
-        uint256 dPrice = IAaveOracle(AAVE_ORACLE).getAssetPrice(dToken);
+        uint256 cPrice = IAaveOracle(AAVE_ORACLE).getAssetPrice(C_TOKEN);
+        uint256 dPrice = IAaveOracle(AAVE_ORACLE).getAssetPrice(D_TOKEN);
 
         // 3. Calculate debt dAmt
-        dAmt = (_cAmt * cPrice * uint256(_cDecimalConversion) * _ltv) / (100 * dPrice * uint256(_dDecimalConversion));
+        dAmt = (_cAmt * cPrice * uint256(_C_DEC_CONVERSION) * _ltv) / (100 * dPrice * uint256(_D_DEC_CONVERSION));
 
         // 4. Borrow
-        IPool(AAVE_POOL).borrow(dToken, dAmt, 2, 0, address(this));
+        IPool(AAVE_POOL).borrow(D_TOKEN, dAmt, 2, 0, address(this));
+    }
+
+    /**
+     * @notice Repays debt token to Aave.
+     * @param _dAmt The amount of debt token to repay to Aave.
+     */
+    function _repay(uint256 _dAmt) internal {
+        IERC20(D_TOKEN).approve(AAVE_POOL, _dAmt);
+        IPool(AAVE_POOL).repay(D_TOKEN, _dAmt, 2, address(this));
+    }
+
+    /**
+     * @notice Withdraws collateral token from Aave to specified recipient.
+     * @param _recipient The recipient of the funds.
+     */
+    function _withdraw(address _recipient) internal {
+        IPool(AAVE_POOL).withdraw(C_TOKEN, _getMaxWithdrawAmt(), _recipient);
+    }
+
+    /**
+     * @notice Calculates maximum withdraw amount.
+     * max_withdraw_usd = colTotal - (debtTotal / liqThreshold) * 100 (decimals: 8)
+     * convert_to_c_dec = 10**(C_DECIMALS - 8)
+     * max_withdraw_usd_c_dec = max_withdraw_usd_8_dec * convert_to_c_dec (decimals: C_DECIMALS)
+     * max_withdraw_c_dec = max_withdraw_usd_c_dec / cPrice (decimals: C_DECIMALS)
+     * See docs here: https://docs.aave.com/developers/guides/liquidations#how-is-health-factor-calculated
+     */
+    function _getMaxWithdrawAmt() internal view returns (uint256 maxWithdrawAmt) {
+        (uint256 cTotal, uint256 dTotal,, uint256 liqThreshold,,) = IPool(AAVE_POOL).getUserAccountData(address(this));
+
+        uint256 cPrice = IAaveOracle(AAVE_ORACLE).getAssetPrice(C_TOKEN);
+
+        maxWithdrawAmt = ((cTotal - (dTotal / liqThreshold) * 100) / cPrice) * 10 ** (C_DECIMALS - 8);
+    }
+
+    /**
+     * @notice Returns this contract's total debt (principle + interest).
+     * @return outstandingDebt This contract's total debt (units: D_TOKEN decimals).
+     */
+    function _getDebtAmt() internal view returns (uint256) {
+        address variableDebtTokenAddress = IPool(AAVE_POOL).getReserveData(D_TOKEN).variableDebtTokenAddress;
+        return IERC20(variableDebtTokenAddress).balanceOf(address(this));
     }
 }
