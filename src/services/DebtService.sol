@@ -70,24 +70,28 @@ contract DebtService {
      * @notice Withdraws collateral token from Aave to specified recipient.
      * @param _recipient The recipient of the funds.
      */
-    function _withdraw(address _recipient) internal {
-        IPool(AAVE_POOL).withdraw(C_TOKEN, _getMaxWithdrawAmt(), _recipient);
+    function _withdraw(address _recipient, uint256 _buffer) internal {
+        IPool(AAVE_POOL).withdraw(C_TOKEN, _getMaxWithdrawAmt(_buffer), _recipient);
     }
 
     /**
      * @notice Calculates maximum withdraw amount.
-     * max_withdraw_usd = colTotal - (debtTotal / liqThreshold) * 100 (decimals: 8)
-     * convert_to_c_dec = 10**(C_DECIMALS - 8)
-     * max_withdraw_usd_c_dec = max_withdraw_usd_8_dec * convert_to_c_dec (decimals: C_DECIMALS)
-     * max_withdraw_c_dec = max_withdraw_usd_c_dec / cPrice (decimals: C_DECIMALS)
+     * uint256 cNeededUSD = (dTotalUSD * 1e4) / liqThreshold;
+     * uint256 maxWithdrawUSD = cTotalUSD - cNeededUSD - _buffer; (Units: 8 decimals)
+     * maxWithdrawAmt = (maxWithdrawUSD * 10 ** (C_DECIMALS)) / cPriceUSD; (Units: C_DECIMALS decimals)
      * See docs here: https://docs.aave.com/developers/guides/liquidations#how-is-health-factor-calculated
      */
-    function _getMaxWithdrawAmt() internal view returns (uint256 maxWithdrawAmt) {
-        (uint256 cTotal, uint256 dTotal,, uint256 liqThreshold,,) = IPool(AAVE_POOL).getUserAccountData(address(this));
+    function _getMaxWithdrawAmt(uint256 _buffer) internal view returns (uint256 maxWithdrawAmt) {
+        (uint256 cTotalUSD, uint256 dTotalUSD,, uint256 liqThreshold,,) =
+            IPool(AAVE_POOL).getUserAccountData(address(this));
+        uint256 cPriceUSD = IAaveOracle(AAVE_ORACLE).getAssetPrice(C_TOKEN);
 
-        uint256 cPrice = IAaveOracle(AAVE_ORACLE).getAssetPrice(C_TOKEN);
-
-        maxWithdrawAmt = ((cTotal - (dTotal / liqThreshold) * 100) / cPrice) * 10 ** (C_DECIMALS - 8);
+        if (dTotalUSD == 0) {
+            maxWithdrawAmt = type(uint256).max;
+        } else {
+            maxWithdrawAmt =
+                ((cTotalUSD - ((dTotalUSD * 1e4) / liqThreshold) - _buffer) * 10 ** (C_DECIMALS)) / cPriceUSD;
+        }
     }
 
     /**

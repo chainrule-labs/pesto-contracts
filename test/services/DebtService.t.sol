@@ -8,8 +8,9 @@ import { Test } from "forge-std/Test.sol";
 import { DebtServiceHarness } from "test/harness/DebtServiceHarness.t.sol";
 import { DebtUtils } from "test/services/utils/DebtUtils.t.sol";
 import { TokenUtils } from "test/services/utils/TokenUtils.t.sol";
-import { Assets, AAVE_ORACLE, USDC, USDC_HOLDER } from "test/common/Constants.t.sol";
+import { Assets, AAVE_ORACLE, AAVE_POOL, DAI, USDC, USDC_HOLDER } from "test/common/Constants.t.sol";
 import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
+import { IPool } from "src/interfaces/aave/IPool.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
 contract DebtServiceTest is Test, DebtUtils, TokenUtils {
@@ -46,15 +47,6 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
                 }
             }
         }
-
-        // Mock AaveOracle
-        for (uint256 i; i < supportedAssets.length; i++) {
-            vm.mockCall(
-                AAVE_ORACLE,
-                abi.encodeWithSelector(IAaveOracle(AAVE_ORACLE).getAssetPrice.selector, supportedAssets[i]),
-                abi.encode(assets.prices(supportedAssets[i]))
-            );
-        }
     }
 
     function test_ActiveFork() public {
@@ -78,15 +70,15 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             uint8 dDecimals = assets.decimals(debtServices[i].D_TOKEN());
             uint64 cDecimalConversion = uint64(10 ** (18 - cDecimals));
             uint64 dDecimalConversion = uint64(10 ** (18 - dDecimals));
-            uint256 cresult = 10 ** uint256(cDecimals) * uint256(cDecimalConversion);
-            uint256 dresult = 10 ** uint256(dDecimals) * uint256(dDecimalConversion);
+            uint256 cResult = 10 ** uint256(cDecimals) * uint256(cDecimalConversion);
+            uint256 dResult = 10 ** uint256(dDecimals) * uint256(dDecimalConversion);
 
             assertEq(debtServices[i].C_DECIMALS(), cDecimals);
             assertEq(debtServices[i].D_DECIMALS(), dDecimals);
             assertEq(debtServices[i].exposed_cDecimalConversion(), cDecimalConversion);
             assertEq(debtServices[i].exposed_dDecimalConversion(), dDecimalConversion);
-            assertEq(cresult, 10 ** 18);
-            assertEq(dresult, 10 ** 18);
+            assertEq(cResult, 10 ** 18);
+            assertEq(dResult, 10 ** 18);
         }
     }
 
@@ -96,6 +88,15 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
     // - It should borrow the correct amount, given mocked token prices.
 
     function testFuzz_Borrow(uint256 _ltv) public {
+        // Mock AaveOracle
+        for (uint256 i; i < supportedAssets.length; i++) {
+            vm.mockCall(
+                AAVE_ORACLE,
+                abi.encodeWithSelector(IAaveOracle(AAVE_ORACLE).getAssetPrice.selector, supportedAssets[i]),
+                abi.encode(assets.prices(supportedAssets[i]))
+            );
+        }
+
         for (uint256 i; i < debtServices.length; i++) {
             // Setup
             address debtService = address(debtServices[i]);
@@ -124,6 +125,112 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             assertEq(IERC20(cToken).balanceOf(debtService), 0);
             assertEq(IERC20(dToken).balanceOf(debtService), dAmt);
             assertEq(dAmt, dAmtExpected);
+        }
+    }
+
+    /// @dev
+    // - It should withdraw the calculated maximum amount.
+    function test_getMaxWithdrawAmtWithDebt(uint256 _cAmt) public {
+        for (uint256 i; i < debtServices.length; i++) {
+            // Setup
+            address debtService = address(debtServices[i]);
+            address cToken = debtServices[i].C_TOKEN();
+            uint256 ltv = 50;
+
+            // Assumption
+            _cAmt = bound(_cAmt, assets.minCAmts(cToken), assets.maxCAmts(cToken));
+
+            // Borrow
+            debtServices[i].exposed_borrow(assets.maxCAmts(cToken), ltv);
+
+            // Act
+            uint256 maxWithdrawAmt = debtServices[i].exposed_getMaxWithdrawAmt(10);
+
+            vm.prank(debtService);
+            IPool(AAVE_POOL).withdraw(cToken, maxWithdrawAmt, debtService);
+            assert(true);
+        }
+    }
+
+    /// @dev
+    // - It should withdraw the calculated maximum amount.
+    function test_getMaxWithdrawAmtNoDebt(uint256 _cAmt) public {
+        for (uint256 i; i < debtServices.length; i++) {
+            // Setup
+            address debtService = address(debtServices[i]);
+            address cToken = debtServices[i].C_TOKEN();
+
+            // Assumption
+            _cAmt = bound(_cAmt, assets.minCAmts(cToken), assets.maxCAmts(cToken));
+
+            // Supply collateral
+            vm.startPrank(debtService);
+            IERC20(cToken).approve(AAVE_POOL, _cAmt);
+            IPool(AAVE_POOL).supply(cToken, _cAmt, debtService, 0);
+
+            // Act
+            uint256 maxWithdrawAmt = debtServices[i].exposed_getMaxWithdrawAmt(10);
+
+            IPool(AAVE_POOL).withdraw(cToken, maxWithdrawAmt, debtService);
+            assert(true);
+        }
+    }
+
+    /// @dev
+    // - It should revert for amounts greater than 1.00001 of max withdraw.
+    function testFail_getMaxWithdrawAmt(uint256 _cAmt, uint256 _extra) public {
+        for (uint256 i; i < debtServices.length; i++) {
+            // Setup
+            address debtService = address(debtServices[i]);
+            address cToken = debtServices[i].C_TOKEN();
+            uint256 ltv = 50;
+
+            // Assumption
+            _cAmt = bound(_cAmt, assets.minCAmts(cToken), assets.maxCAmts(cToken));
+
+            // Borrow
+            debtServices[i].exposed_borrow(assets.maxCAmts(cToken), ltv);
+
+            // Act
+            uint256 maxWithdrawAmt = debtServices[i].exposed_getMaxWithdrawAmt(10);
+
+            // Add extra to max withdraw
+            uint256 minAmount = maxWithdrawAmt / 100_000;
+            vm.assume(_extra >= minAmount);
+
+            vm.prank(debtService);
+            IPool(AAVE_POOL).withdraw(cToken, maxWithdrawAmt + _extra, debtService);
+        }
+    }
+
+    /// @dev
+    // - It should return the number of variable debt tokens the contract holds.
+    // - The above should be true for all supported debt tokens.
+
+    function test_getDebtAmt() public {
+        // Setup
+        DebtServiceHarness[] memory filteredDebtServices;
+        uint256 ltv = 50;
+
+        // filter list for debt services, so each debt token can be tested
+        for (uint256 i; i < debtServices.length; i++) {
+            bool colUSDC = debtServices[i].C_TOKEN() == USDC;
+            bool colDAIdebtUSDC = debtServices[i].C_TOKEN() == DAI && debtServices[i].D_TOKEN() == USDC;
+            if (colUSDC && colDAIdebtUSDC) {
+                filteredDebtServices[i] = debtServices[i];
+            }
+        }
+
+        for (uint256 i; i < filteredDebtServices.length; i++) {
+            address cToken = debtServices[i].C_TOKEN();
+            uint256 cAmt = assets.maxCAmts(cToken);
+            uint256 dAmt = debtServices[i].exposed_borrow(cAmt, ltv);
+
+            // Act
+            uint256 debtAmt = debtServices[i].exposed_getDebtAmt();
+
+            // Assertions
+            assertEq(debtAmt, dAmt);
         }
     }
 }

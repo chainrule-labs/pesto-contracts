@@ -6,7 +6,7 @@ on:
     pull_request:
 
 env:
-    ETHEREUM_RPC: ${{ secrets.ETHEREUM_RPC }}
+    RPC_URL: ${{ secrets.RPC_URL }}
 
 jobs:
     run-ci:
@@ -55,7 +55,7 @@ jobs:
               run: npm run lint:check
 
             - name: Run tests
-              run: forge test --optimize --fork-url ${{ env.ETHEREUM_RPC }}
+              run: forge test --optimize --fork-url ${{ env.RPC_URL }}
 
             - name: Coverage
               run: |

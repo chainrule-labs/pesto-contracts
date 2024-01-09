@@ -13,6 +13,7 @@ contract Position is DebtService, SwapService {
 
     // Events
     event Short(uint256 cAmt, uint256 dAmt, uint256 bAmt);
+    event Close(uint256 gains);
 
     constructor(address _owner, address _cToken, address _dToken, address _bToken) DebtService(_cToken, _dToken) {
         OWNER = _owner;
@@ -45,8 +46,12 @@ contract Position is DebtService, SwapService {
      * @param _poolFee The fee of the Uniswap pool.
      * @param _exactOutput Whether to swap exact output or exact input (true for exact output, false for exact input).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through (only used if _exactOutput is false, supply 0 if true).
+     * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (default = 10, units: 8 decimals).
      */
-    function close(uint24 _poolFee, bool _exactOutput, uint256 _swapAmtOutMin) public payable {
+    function close(uint24 _poolFee, bool _exactOutput, uint256 _swapAmtOutMin, uint256 _withdrawBuffer)
+        public
+        payable
+    {
         uint256 bTokenBalance = IERC20(B_TOKEN).balanceOf(address(this));
 
         // 1. Swap base token for debt token
@@ -62,12 +67,15 @@ contract Position is DebtService, SwapService {
         _repay(dAmtOut);
 
         // 3. Withdraw collateral to user
-        _withdraw(OWNER);
+        _withdraw(OWNER, _withdrawBuffer);
 
         // 4. Pay gains if any
         uint256 gains = bTokenBalance - bAmtIn;
         if (gains > 0) {
             IERC20(B_TOKEN).transfer(OWNER, gains);
         }
+
+        // 5. Emit event
+        emit Close(gains);
     }
 }

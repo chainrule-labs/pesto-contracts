@@ -1,19 +1,27 @@
-# Compiler files
+# misc
+.DS_Store
+*.pem
 cache/
+broadcast/
+
+# production
 out/
 
-# Ignores development broadcast logs
-!/broadcast
-/broadcast/*/31337/
-/broadcast/**/dry-run/
+# dependencies
+node_modules/
 
-# Docs
-docs/
+# testing
+lcov.info
+.gas-snapshot
 
-# Dotenv file
+# local env files
 .env
 
-TODO.txt
+# editor
+.vscode/
+.idea
+
+todo.txt
 units.txt
 faq.txt
 notes.txt
