@@ -129,8 +129,82 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
     }
 
     /// @dev
+    // - The position contract's debt should decrease by amount the amount repaid.
+    // - The above should be true for all supported debt tokens.
+    function test_Repay(uint256 _payment) public {
+        // Setup
+        uint256 ltv = 50;
+        DebtServiceHarness[4] memory filteredDebtServices = _getFilteredDebtServicesByDToken(debtServices);
+
+        assertEq(filteredDebtServices.length, 4);
+
+        for (uint256 i; i < filteredDebtServices.length; i++) {
+            // Setup
+            address debtService = address(debtServices[i]);
+
+            // Borrow
+            address cToken = debtServices[i].C_TOKEN();
+            uint256 cAmt = assets.maxCAmts(cToken);
+            uint256 dAmt = debtServices[i].exposed_borrow(cAmt, ltv);
+
+            // Pre-act data
+            uint256 preDebtAmt = debtServices[i].exposed_getDebtAmt();
+
+            // Bound
+            _payment = bound(_payment, 1, dAmt);
+
+            // Act
+            vm.prank(debtService);
+            debtServices[i].exposed_repay(_payment);
+
+            // Post-act data
+            uint256 postDebtAmt = debtServices[i].exposed_getDebtAmt();
+
+            // Assert
+            assertApproxEqAbs(postDebtAmt, preDebtAmt - _payment, 1);
+        }
+    }
+
+    /// @dev
+    // - The collateral amount should decrease by the amount withdrawn (it go to 0).
+    // - The owner's cToken balance should increase by the amount withdrawn.
+    // - The above should be true for all supported collateral tokens.
+    // - The above should work for a range of withdaw amounts.
+    function test_Withdraw(uint256 _cAmt) public {
+        DebtServiceHarness[4] memory filteredDebtServices = _getFilteredDebtServicesByCToken(debtServices);
+
+        for (uint256 i; i < filteredDebtServices.length; i++) {
+            // Setup
+            address debtService = address(debtServices[i]);
+            address cToken = debtServices[i].C_TOKEN();
+
+            _cAmt = bound(_cAmt, assets.minCAmts(cToken), assets.maxCAmts(cToken));
+
+            // Supply collateral
+            vm.startPrank(debtService);
+            IERC20(cToken).approve(AAVE_POOL, _cAmt);
+            IPool(AAVE_POOL).supply(cToken, _cAmt, debtService, 0);
+
+            // Pre-act data
+            uint256 preATokenBal = _getATokenBalance(debtService, cToken);
+            uint256 preOwnerCTokenBal = IERC20(cToken).balanceOf(address(this));
+
+            // Act
+            debtServices[i].exposed_withdraw(address(this), 10);
+
+            // Post-act data
+            uint256 postATokenBal = _getATokenBalance(debtService, cToken);
+            uint256 postOwnerCTokenBal = IERC20(cToken).balanceOf(address(this));
+
+            // Assert
+            assertEq(postATokenBal, 0);
+            assertEq(postOwnerCTokenBal, preOwnerCTokenBal + preATokenBal);
+        }
+    }
+
+    /// @dev
     // - It should withdraw the calculated maximum amount.
-    function test_getMaxWithdrawAmtWithDebt(uint256 _cAmt) public {
+    function test_GetMaxWithdrawAmtWithDebt(uint256 _cAmt) public {
         for (uint256 i; i < debtServices.length; i++) {
             // Setup
             address debtService = address(debtServices[i]);
@@ -154,7 +228,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
 
     /// @dev
     // - It should withdraw the calculated maximum amount.
-    function test_getMaxWithdrawAmtNoDebt(uint256 _cAmt) public {
+    function test_GetMaxWithdrawAmtNoDebt(uint256 _cAmt) public {
         for (uint256 i; i < debtServices.length; i++) {
             // Setup
             address debtService = address(debtServices[i]);
@@ -178,7 +252,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
 
     /// @dev
     // - It should revert for amounts greater than 1.00001 of max withdraw.
-    function testFail_getMaxWithdrawAmt(uint256 _cAmt, uint256 _extra) public {
+    function testFail_GetMaxWithdrawAmt(uint256 _cAmt, uint256 _extra) public {
         for (uint256 i; i < debtServices.length; i++) {
             // Setup
             address debtService = address(debtServices[i]);
@@ -207,19 +281,11 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
     // - It should return the number of variable debt tokens the contract holds.
     // - The above should be true for all supported debt tokens.
 
-    function test_getDebtAmt() public {
+    function test_GetDebtAmt() public {
         // Setup
-        DebtServiceHarness[] memory filteredDebtServices;
         uint256 ltv = 50;
-
-        // filter list for debt services, so each debt token can be tested
-        for (uint256 i; i < debtServices.length; i++) {
-            bool colUSDC = debtServices[i].C_TOKEN() == USDC;
-            bool colDAIdebtUSDC = debtServices[i].C_TOKEN() == DAI && debtServices[i].D_TOKEN() == USDC;
-            if (colUSDC && colDAIdebtUSDC) {
-                filteredDebtServices[i] = debtServices[i];
-            }
-        }
+        DebtServiceHarness[4] memory filteredDebtServices = _getFilteredDebtServicesByDToken(debtServices);
+        assertEq(filteredDebtServices.length, 4);
 
         for (uint256 i; i < filteredDebtServices.length; i++) {
             address cToken = debtServices[i].C_TOKEN();

@@ -6,6 +6,9 @@ import { DebtService } from "src/services/DebtService.sol";
 import { SwapService } from "src/services/SwapService.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
+/// @title Position
+/// @author chainrule.eth
+/// @notice Manages an owner's individual position
 contract Position is DebtService, SwapService {
     // Immutable: no SLOAD to save gas
     address public immutable OWNER;
@@ -22,16 +25,16 @@ contract Position is DebtService, SwapService {
 
     /**
      * @notice Adds to this contract's short position.
-     * @param _cAmt The amount of collateral to be supplied for this transaction-specific loan (units: collateral token decimals).
+     * @param _cAmt The amount of collateral to be supplied for this transaction-specific loan (units: C_DECIMALS).
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
      * @param _poolFee The fee of the Uniswap pool.
      */
     function short(uint256 _cAmt, uint256 _ltv, uint256 _swapAmtOutMin, uint24 _poolFee) public payable {
-        // 1. Transfer col to this contact
+        // 1. Transfer collateral to this contact
         IERC20(C_TOKEN).transferFrom(msg.sender, address(this), _cAmt);
 
-        // 2. Borrow asset
+        // 2. Borrow debt token
         uint256 dAmt = _borrow(_cAmt, _ltv);
 
         // 3. Swap debt token for base token

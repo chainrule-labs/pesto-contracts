@@ -39,8 +39,8 @@ contract SwapServiceTest is Test, TokenUtils {
     }
 
     /// @dev
-    // - It's input token balance should decrease by the amount inputted.
-    // - It's output token balance should increase by the amount outputted.
+    // - The swap service's input token balance should decrease by the amount inputted.
+    // - The swap service's output token balance should increase by the amount outputted.
     // - The above should be true for all supported tokens.
 
     function test_SwapExactInput() public {
@@ -49,8 +49,8 @@ contract SwapServiceTest is Test, TokenUtils {
                 address inputToken = supportedAssets[i];
                 address outputToken = supportedAssets[j];
 
-                bool noPool = (inputToken == USDC && outputToken == DAI) || (inputToken == DAI && outputToken == USDC);
-                bool poolExists = !noPool;
+                bool poolExists =
+                    !((inputToken == USDC && outputToken == DAI) || (inputToken == DAI && outputToken == USDC));
 
                 if (i != j && poolExists) {
                     // Take snapshot
@@ -74,6 +74,51 @@ contract SwapServiceTest is Test, TokenUtils {
 
                     // Assertions
                     assertEq(inputPostBal, 0);
+                    assertEq(inputPostBal, inputPreBal - amtIn);
+                    assertEq(outputPostBal, outputPreBal + amtOut);
+
+                    // Revert to snapshot
+                    vm.revertTo(id);
+                }
+            }
+        }
+    }
+
+    /// @dev
+    // - The swap service's input token balance should decrease by the amount inputted.
+    // - The swap service's output token balance should increase by the amount outputted.
+    // - The above should be true for all supported tokens.
+
+    function test_SwapExactOutput() public {
+        for (uint256 i; i < supportedAssets.length; i++) {
+            for (uint256 j; j < supportedAssets.length; j++) {
+                address inputToken = supportedAssets[i];
+                address outputToken = supportedAssets[j];
+
+                bool poolExists =
+                    !((inputToken == USDC && outputToken == DAI) || (inputToken == DAI && outputToken == USDC));
+
+                if (i != j && poolExists) {
+                    // Take snapshot
+                    uint256 id = vm.snapshot();
+
+                    // Fund SwapService with input token
+                    _fund(swapServiceAddr, inputToken, assets.maxCAmts(inputToken));
+
+                    // Pre-act balances
+                    uint256 inputPreBal = IERC20(inputToken).balanceOf(swapServiceAddr);
+                    uint256 outputPreBal = IERC20(outputToken).balanceOf(swapServiceAddr);
+
+                    // Act
+                    uint256 outputAmtOut = assets.swapAmtOuts(outputToken);
+                    (uint256 amtIn, uint256 amtOut) =
+                        swapService.exposed_swapExactOutput(inputToken, outputToken, outputAmtOut, inputPreBal, 3000);
+
+                    // Post-act balances
+                    uint256 inputPostBal = IERC20(inputToken).balanceOf(swapServiceAddr);
+                    uint256 outputPostBal = IERC20(outputToken).balanceOf(swapServiceAddr);
+
+                    // Assertions
                     assertEq(inputPostBal, inputPreBal - amtIn);
                     assertEq(outputPostBal, outputPreBal + amtOut);
 

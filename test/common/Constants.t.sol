@@ -21,6 +21,7 @@ contract Assets {
     mapping(address => uint8) public decimals;
     mapping(address => uint256) public maxCAmts;
     mapping(address => uint256) public minCAmts;
+    mapping(address => uint256) public swapAmtOuts;
     mapping(address => uint256) public prices;
 
     constructor() {
@@ -41,6 +42,12 @@ contract Assets {
         minCAmts[DAI] = 100 * 10 ** 18;
         minCAmts[WETH] = 0.01 * 10 ** 18;
         minCAmts[WBTC] = 0.001 * 10 ** 8;
+
+        // Set swap amounts out
+        swapAmtOuts[USDC] = 10 * 10 ** 6;
+        swapAmtOuts[DAI] = 10 * 10 ** 18;
+        swapAmtOuts[WETH] = 0.005 * 10 ** 18;
+        swapAmtOuts[WBTC] = 0.0002 * 10 ** 8;
 
         // Set prices
         prices[USDC] = 1 * 10 ** 8;

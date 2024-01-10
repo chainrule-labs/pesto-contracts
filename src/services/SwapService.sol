@@ -7,6 +7,9 @@ pragma abicoder v2;
 import { TransferHelper } from "src/dependencies/uniswap/TransferHelper.sol";
 import { ISwapRouter } from "src/interfaces/uniswap/ISwapRouter.sol";
 
+/// @title SwapService
+/// @author chainrule.eth
+/// @notice Manages all swap-related interactions
 contract SwapService {
     // Constants: no SLOAD to save gas
     ISwapRouter private constant SWAP_ROUTER = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);

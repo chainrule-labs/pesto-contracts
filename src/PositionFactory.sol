@@ -5,28 +5,29 @@ pragma solidity ^0.8.21;
 import { Position } from "src/Position.sol";
 
 /// @title Position Factory
-/// @author deloperator.eth
-/// @notice Creates and stores user accounts
+/// @author chainrule.eth
+/// @notice Creates and stores user positions
 contract PositionFactory {
     // Constants: no SLOAD to save gas
     address private constant CONTRACT_DEPLOYER = 0x0a5B347509621337cDDf44CBCf6B6E7C9C908CD2;
 
     // Factory Storage
-    mapping(address => mapping(address => mapping(address => mapping(address => address)))) public accounts;
+    // positions[owner][col][debt][base] = address(positionContract)
+    mapping(address => mapping(address => mapping(address => mapping(address => address)))) public positions;
 
     // Errors
     error Unauthorized();
-    error AccountExists();
+    error PositionExists();
 
     constructor() {
         if (msg.sender != CONTRACT_DEPLOYER) revert Unauthorized();
     }
 
-    function createAccount(address _col, address _debt, address _base) public payable returns (address account) {
-        if (accounts[msg.sender][_col][_debt][_base] != address(0)) revert AccountExists();
+    function createPosition(address _col, address _debt, address _base) public payable returns (address position) {
+        if (positions[msg.sender][_col][_debt][_base] != address(0)) revert PositionExists();
 
-        account = address(new Position(msg.sender, _col, _debt, _base));
+        position = address(new Position(msg.sender, _col, _debt, _base));
 
-        accounts[msg.sender][_col][_debt][_base] = account;
+        positions[msg.sender][_col][_debt][_base] = position;
     }
 }

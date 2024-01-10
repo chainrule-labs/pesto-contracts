@@ -33,23 +33,27 @@ contract PositionFactoryTest is Test {
         assertEq(vm.activeFork(), mainnetFork, "vm.activeFork() != mainnetFork");
     }
 
-    function test_CreateAccount() public {
+    function test_CreatePosition() public {
         // Setup
         address[4] memory supportedAssets = assets.getSupported();
-        address account;
+        address position;
         address owner;
-        address col;
-        address debt;
-        address base;
+        address cToken;
+        address dToken;
+        address bToken;
 
-        // Expectation: all accounts should not exist
+        // Expectation: all positions should not exist
         for (uint256 i; i < supportedAssets.length; i++) {
             for (uint256 j; j < supportedAssets.length; j++) {
-                for (uint256 k; k < supportedAssets.length; k++) {
-                    account = positionFactory.accounts(
-                        address(this), supportedAssets[i], supportedAssets[j], supportedAssets[k]
-                    );
-                    assertEq(account, address(0));
+                if (j != i) {
+                    for (uint256 k; k < supportedAssets.length; k++) {
+                        if (k != j) {
+                            position = positionFactory.positions(
+                                address(this), supportedAssets[i], supportedAssets[j], supportedAssets[k]
+                            );
+                            assertEq(position, address(0));
+                        }
+                    }
                 }
             }
         }
@@ -60,20 +64,20 @@ contract PositionFactoryTest is Test {
                 if (j != i) {
                     for (uint256 k; k < supportedAssets.length; k++) {
                         if (k != j) {
-                            account = positionFactory.createAccount(
+                            position = positionFactory.createPosition(
                                 supportedAssets[i], supportedAssets[j], supportedAssets[k]
                             );
-                            owner = IPosition(account).OWNER();
-                            col = IPosition(account).C_TOKEN();
-                            debt = IPosition(account).D_TOKEN();
-                            base = IPosition(account).B_TOKEN();
+                            owner = IPosition(position).OWNER();
+                            cToken = IPosition(position).C_TOKEN();
+                            dToken = IPosition(position).D_TOKEN();
+                            bToken = IPosition(position).B_TOKEN();
 
                             // Assertions
-                            assertNotEq(account, address(0));
+                            assertNotEq(position, address(0));
                             assertEq(owner, address(this));
-                            assertEq(col, supportedAssets[i]);
-                            assertEq(debt, supportedAssets[j]);
-                            assertEq(base, supportedAssets[k]);
+                            assertEq(cToken, supportedAssets[i]);
+                            assertEq(dToken, supportedAssets[j]);
+                            assertEq(bToken, supportedAssets[k]);
                         }
                     }
                 }
@@ -81,21 +85,22 @@ contract PositionFactoryTest is Test {
         }
     }
 
-    function test_CannotCreateAccount() public {
+    function test_CannotCreatePosition() public {
         // Setup
         address[4] memory supportedAssets = assets.getSupported();
-        address account;
+        address position;
         address duplicate;
 
         // Act
         for (uint256 i; i < supportedAssets.length; i++) {
             for (uint256 j; j < supportedAssets.length; j++) {
                 for (uint256 k; k < supportedAssets.length; k++) {
-                    account = positionFactory.createAccount(supportedAssets[i], supportedAssets[j], supportedAssets[k]);
-                    /// @dev Duplicate account creation should revert
-                    vm.expectRevert(PositionFactory.AccountExists.selector);
+                    position =
+                        positionFactory.createPosition(supportedAssets[i], supportedAssets[j], supportedAssets[k]);
+                    /// @dev Duplicate position creation should revert
+                    vm.expectRevert(PositionFactory.PositionExists.selector);
                     duplicate =
-                        positionFactory.createAccount(supportedAssets[i], supportedAssets[j], supportedAssets[k]);
+                        positionFactory.createPosition(supportedAssets[i], supportedAssets[j], supportedAssets[k]);
                 }
             }
         }

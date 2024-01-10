@@ -19,6 +19,7 @@ contract PositionTest is Test, TokenUtils {
     struct TestPosition {
         address addr;
         address cToken;
+        address dToken;
         address bToken;
     }
 
@@ -28,7 +29,7 @@ contract PositionTest is Test, TokenUtils {
     TestPosition[] public positions;
 
     // Test Storage
-    address public accountAddr;
+    address public positionAddr;
     uint256 public mainnetFork;
 
     // Events
@@ -56,13 +57,12 @@ contract PositionTest is Test, TokenUtils {
                     for (uint256 k; k < supportedAssets.length; k++) {
                         address bToken = supportedAssets[k];
                         // Exclude positions with no pool
-                        bool noPool = (dToken == USDC && bToken == DAI) || (dToken == DAI && bToken == USDC);
-                        bool poolExists = !noPool;
+                        bool poolExists = !((dToken == USDC && bToken == DAI) || (dToken == DAI && bToken == USDC));
                         if (k != j && poolExists) {
-                            accountAddr = positionFactory.createAccount(cToken, dToken, bToken);
-                            TestPosition memory newAccount =
-                                TestPosition({ addr: accountAddr, cToken: cToken, bToken: bToken });
-                            positions.push(newAccount);
+                            positionAddr = positionFactory.createPosition(cToken, dToken, bToken);
+                            TestPosition memory newPosition =
+                                TestPosition({ addr: positionAddr, cToken: cToken, dToken: dToken, bToken: bToken });
+                            positions.push(newPosition);
                         }
                     }
                 }
@@ -85,7 +85,7 @@ contract PositionTest is Test, TokenUtils {
 
     /// @dev
     // - User's cToken balance should decrease by collateral amount supplied.
-    // - Account's bToken balance should increase by amount receieved from swap.
+    // - Position's bToken balance should increase by amount receieved from swap.
     // - The above should be true for a wide range of LTVs.
     // - The above should be true for a wide range of collateral amounts.
     // - The above should be true for all supported tokens.
@@ -107,7 +107,7 @@ contract PositionTest is Test, TokenUtils {
             // Fund user with collateral
             _fund(address(this), cToken, _cAmt);
 
-            // Approve account to spend collateral
+            // Approve position to spend collateral
             IERC20(cToken).approve(addr, _cAmt);
 
             // Pre-act balances
@@ -138,4 +138,43 @@ contract PositionTest is Test, TokenUtils {
             vm.revertTo(id);
         }
     }
+
+    /// @dev
+    // - Position contract's bToken balance should go to 0.
+    // - Position contract's debt on Aave should go to 0.
+    // - User's cToken balance should increase by the amount of collateral withdrawn.
+    // - User's bToken balance should increase by the position's gains amount.
+    // - The above should be true for all supported tokens.
+
+    // function testFuzz_CloseWithGain() public {
+    //     // Take snapshot
+    //     uint256 id = vm.snapshot();
+
+    //     for (uint256 i; i < positions.length; i++) {
+    //         // Test variables
+    //         address addr = positions[i].addr;
+    //         address cToken = positions[i].cToken;
+    //         address dToken = positions[i].dToken;
+    //         address bToken = positions[i].bToken;
+
+    //         // Bound fuzzed variables
+
+    //         // Setup: open short position
+    //         uint256 cAmt = assets.maxCAmts(cToken);
+    //         uint256 ltv = 50;
+    //         _fund(address(this), cToken, cAmt);
+    //         IERC20(cToken).approve(addr, cAmt);
+    //         IPosition(addr).short(cAmt, ltv, 0, 3000);
+
+    //         // Pre-act data
+
+    //         // Act
+    //         IPosition(addr).close(3000, true, 0, 10);
+
+    //         // Post-act data
+
+    //         // Revert to snapshot
+    //         vm.revertTo(id);
+    //     }
+    // }
 }

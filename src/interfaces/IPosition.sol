@@ -10,5 +10,7 @@ interface IPosition {
 
     // Core Functions
     function short(uint256 _cAmt, uint256 _ltv, uint256 _swapAmtOutMin, uint24 _poolFee) external payable;
-    function close() external;
+    function close(uint24 _poolFee, bool _exactOutput, uint256 _swapAmtOutMin, uint256 _withdrawBuffer)
+        external
+        payable;
 }
