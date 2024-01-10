@@ -7,13 +7,25 @@ import { VmSafe } from "forge-std/Vm.sol";
 
 // Local Imports
 import { PositionFactory } from "src/PositionFactory.sol";
-import { Assets, AAVE_ORACLE, CONTRACT_DEPLOYER, DAI, USDC, WBTC, WETH } from "test/common/Constants.t.sol";
+import {
+    Assets,
+    AAVE_ORACLE,
+    CONTRACT_DEPLOYER,
+    DAI,
+    PROFIT_PERCENT,
+    SWAP_ROUTER,
+    USDC,
+    WBTC,
+    WETH
+} from "test/common/Constants.t.sol";
 import { TokenUtils } from "test/services/utils/TokenUtils.t.sol";
+import { DebtUtils } from "test/services/utils/DebtUtils.t.sol";
+import { MockUniswapGains } from "test/mocks/MockUniswap.t.sol";
 import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IPosition } from "src/interfaces/IPosition.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
-contract PositionTest is Test, TokenUtils {
+contract PositionTest is Test, TokenUtils, DebtUtils {
     /* solhint-disable func-name-mixedcase */
 
     struct TestPosition {
@@ -21,6 +33,22 @@ contract PositionTest is Test, TokenUtils {
         address cToken;
         address dToken;
         address bToken;
+    }
+
+    struct ContractBalances {
+        uint256 preBToken;
+        uint256 postBToken;
+        uint256 preVDToken;
+        uint256 postVDToken;
+        uint256 preAToken;
+        uint256 postAToken;
+    }
+
+    struct UserBalances {
+        uint256 preBToken;
+        uint256 postBToken;
+        uint256 preCToken;
+        uint256 postCToken;
     }
 
     // Test contracts
@@ -146,35 +174,78 @@ contract PositionTest is Test, TokenUtils {
     // - User's bToken balance should increase by the position's gains amount.
     // - The above should be true for all supported tokens.
 
-    // function testFuzz_CloseWithGain() public {
-    //     // Take snapshot
-    //     uint256 id = vm.snapshot();
+    function test_CloseWithGains() public {
+        ContractBalances memory contractBalances;
+        UserBalances memory userBalances;
 
-    //     for (uint256 i; i < positions.length; i++) {
-    //         // Test variables
-    //         address addr = positions[i].addr;
-    //         address cToken = positions[i].cToken;
-    //         address dToken = positions[i].dToken;
-    //         address bToken = positions[i].bToken;
+        // Take snapshot
+        uint256 id = vm.snapshot();
 
-    //         // Bound fuzzed variables
+        for (uint256 i; i < positions.length; i++) {
+            // Test variables
+            address addr = positions[i].addr;
 
-    //         // Setup: open short position
-    //         uint256 cAmt = assets.maxCAmts(cToken);
-    //         uint256 ltv = 50;
-    //         _fund(address(this), cToken, cAmt);
-    //         IERC20(cToken).approve(addr, cAmt);
-    //         IPosition(addr).short(cAmt, ltv, 0, 3000);
+            // Setup: open short position
+            uint256 cAmt = assets.maxCAmts(positions[i].cToken);
+            uint256 ltv = 50;
+            _fund(address(this), positions[i].cToken, cAmt);
+            IERC20(positions[i].cToken).approve(addr, cAmt);
+            IPosition(addr).short(cAmt, ltv, 0, 3000);
 
-    //         // Pre-act data
+            // Get pre-act balances
+            contractBalances.preBToken = IERC20(positions[i].bToken).balanceOf(addr);
+            contractBalances.preVDToken = _getVariableDebtTokenBalance(addr, positions[i].dToken);
+            contractBalances.preAToken = _getATokenBalance(addr, positions[i].cToken);
+            userBalances.preBToken = IERC20(positions[i].bToken).balanceOf(address(this));
+            userBalances.preCToken = IERC20(positions[i].cToken).balanceOf(address(this));
 
-    //         // Act
-    //         IPosition(addr).close(3000, true, 0, 10);
+            // Assertions
+            assertEq(userBalances.preBToken, 0);
+            assertNotEq(contractBalances.preBToken, 0);
+            assertNotEq(contractBalances.preVDToken, 0);
 
-    //         // Post-act data
+            // Mock Uniswap to ensure position gains
+            _fund(SWAP_ROUTER, positions[i].dToken, contractBalances.preVDToken);
+            bytes memory code = address(new MockUniswapGains()).code;
+            vm.etch(SWAP_ROUTER, code);
 
-    //         // Revert to snapshot
-    //         vm.revertTo(id);
-    //     }
-    // }
+            // Act
+            /// @dev start event recorder
+            vm.recordLogs();
+            IPosition(addr).close(3000, true, 0, 10);
+            VmSafe.Log[] memory entries = vm.getRecordedLogs();
+
+            // Get post-act balances
+            contractBalances.postBToken = IERC20(positions[i].bToken).balanceOf(addr);
+            contractBalances.postVDToken = _getVariableDebtTokenBalance(addr, positions[i].dToken);
+            contractBalances.postAToken = _getATokenBalance(addr, positions[i].cToken);
+            userBalances.postBToken = IERC20(positions[i].bToken).balanceOf(address(this));
+            userBalances.postCToken = IERC20(positions[i].cToken).balanceOf(address(this));
+
+            bytes memory closeEvent = entries[entries.length - 1].data;
+            uint256 gains;
+
+            assembly {
+                gains := mload(add(closeEvent, 0x20))
+            }
+
+            // Assertions:
+            assertEq(contractBalances.postBToken, 0);
+            assertEq(contractBalances.postVDToken, 0);
+            assertEq(contractBalances.postAToken, 0);
+            assertApproxEqAbs(gains, contractBalances.preBToken * PROFIT_PERCENT / 100, 1);
+
+            if (positions[i].bToken == positions[i].cToken) {
+                /// @dev In this case, bToken and cToken balances will increase by the same amount (gains + collateral withdrawn)
+                assertEq(userBalances.postBToken, userBalances.preBToken + gains + contractBalances.preAToken);
+                assertEq(userBalances.postCToken, userBalances.postBToken);
+            } else {
+                assertEq(userBalances.postBToken, userBalances.preBToken + gains);
+                assertEq(userBalances.postCToken, userBalances.preCToken + contractBalances.preAToken);
+            }
+
+            // Revert to snapshot
+            vm.revertTo(id);
+        }
+    }
 }

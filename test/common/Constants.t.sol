@@ -4,6 +4,7 @@ pragma solidity ^0.8.21;
 address constant CONTRACT_DEPLOYER = 0x0a5B347509621337cDDf44CBCf6B6E7C9C908CD2;
 address constant AAVE_ORACLE = 0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7;
 address constant AAVE_POOL = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
+address constant SWAP_ROUTER = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
 
 // Supported Assets
 address constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
@@ -14,7 +15,8 @@ address constant WBTC = 0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f;
 // Largest USDC holder (GMX)
 address constant USDC_HOLDER = 0x47c031236e19d024b42f8AE6780E44A573170703;
 
-// Supported
+// Uint constants
+uint256 constant PROFIT_PERCENT = 25;
 
 contract Assets {
     address[4] public supported = [USDC, DAI, WETH, WBTC];

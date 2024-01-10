@@ -74,6 +74,7 @@ contract Position is DebtService, SwapService {
 
         // 4. Pay gains if any
         uint256 gains = bTokenBalance - bAmtIn;
+
         if (gains > 0) {
             IERC20(B_TOKEN).transfer(OWNER, gains);
         }

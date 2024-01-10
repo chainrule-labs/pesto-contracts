@@ -19,8 +19,13 @@ contract DebtUtils {
     }
 
     function _getATokenBalance(address _debtService, address _cToken) internal view returns (uint256) {
-        address aTokenAddr = IPool(AAVE_POOL).getReserveData(_cToken).aTokenAddress;
-        return IERC20(aTokenAddr).balanceOf(_debtService);
+        address aToken = IPool(AAVE_POOL).getReserveData(_cToken).aTokenAddress;
+        return IERC20(aToken).balanceOf(_debtService);
+    }
+
+    function _getVariableDebtTokenBalance(address _debtService, address _dToken) internal view returns (uint256) {
+        address vDToken = IPool(AAVE_POOL).getReserveData(_dToken).variableDebtTokenAddress;
+        return IERC20(vDToken).balanceOf(_debtService);
     }
 
     /// @dev returns a list of 4 debt services; one for each supported dToken.
