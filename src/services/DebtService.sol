@@ -8,7 +8,7 @@ import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IERC20Metadata } from "src/interfaces/token/IERC20Metadata.sol";
 
 /// @title DebtService
-/// @author chainrule.eth
+/// @author Chain Rule, LLC
 /// @notice Manages all debt-related interactions
 contract DebtService {
     // Constants: no SLOAD to save gas
@@ -72,7 +72,7 @@ contract DebtService {
     /**
      * @notice Withdraws collateral token from Aave to specified recipient.
      * @param _recipient The recipient of the funds.
-     * @param _buffer The amount of collateral left as safety buffer for tx to go through (default = 10, units: 8 decimals).
+     * @param _buffer The amount of collateral left as safety buffer for tx to go through (default = 100_000, units: 8 decimals).
      */
     function _withdraw(address _recipient, uint256 _buffer) internal {
         IPool(AAVE_POOL).withdraw(C_TOKEN, _getMaxWithdrawAmt(_buffer), _recipient);

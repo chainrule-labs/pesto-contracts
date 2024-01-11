@@ -8,7 +8,7 @@ import { TransferHelper } from "src/dependencies/uniswap/TransferHelper.sol";
 import { ISwapRouter } from "src/interfaces/uniswap/ISwapRouter.sol";
 
 /// @title SwapService
-/// @author chainrule.eth
+/// @author Chain Rule, LLC
 /// @notice Manages all swap-related interactions
 contract SwapService {
     // Constants: no SLOAD to save gas

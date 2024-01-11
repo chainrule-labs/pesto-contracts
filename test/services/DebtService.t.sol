@@ -166,7 +166,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
     }
 
     /// @dev
-    // - The collateral amount should decrease by the amount withdrawn (it go to 0).
+    // - The position contract's aToken balance should decrease by the amount withdrawn (it should go to 0).
     // - The owner's cToken balance should increase by the amount withdrawn.
     // - The above should be true for all supported collateral tokens.
     // - The above should work for a range of withdaw amounts.

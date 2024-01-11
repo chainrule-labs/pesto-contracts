@@ -141,8 +141,8 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
             IERC20(cToken).approve(addr, _cAmt);
 
             // Pre-act balances
-            uint256 colPreBal = IERC20(cToken).balanceOf(address(this));
-            uint256 basePreBal = IERC20(cToken).balanceOf(addr);
+            uint256 cTokenPreBal = IERC20(cToken).balanceOf(address(this));
+            uint256 bTokenPreBal = IERC20(cToken).balanceOf(addr);
 
             // Act
             vm.recordLogs();
@@ -150,8 +150,8 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
             VmSafe.Log[] memory entries = vm.getRecordedLogs();
 
             // Post-act balances
-            uint256 colPostBal = IERC20(cToken).balanceOf(address(this));
-            uint256 basePostBal = IERC20(bToken).balanceOf(addr);
+            uint256 cTokenPostBal = IERC20(cToken).balanceOf(address(this));
+            uint256 bTokenPostBal = IERC20(bToken).balanceOf(addr);
             bytes memory shortEvent = entries[entries.length - 1].data;
             uint256 bAmt;
 
@@ -161,8 +161,8 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
             }
 
             // Assertions
-            assertEq(colPostBal, colPreBal - _cAmt);
-            assertEq(basePostBal, basePreBal + bAmt);
+            assertEq(cTokenPostBal, cTokenPreBal - _cAmt);
+            assertEq(bTokenPostBal, bTokenPreBal + bAmt);
 
             // Revert to snapshot
             vm.revertTo(id);
@@ -304,7 +304,7 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
             userBalances.postBToken = IERC20(positions[i].bToken).balanceOf(address(this));
             userBalances.postCToken = IERC20(positions[i].cToken).balanceOf(address(this));
 
-            // Assertions:
+            // Assertions
             assertApproxEqAbs(
                 contractBalances.postVDToken, contractBalances.preVDToken * (100 - REPAY_PERCENT) / 100, 1
             );

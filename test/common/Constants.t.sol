@@ -18,7 +18,7 @@ address constant USDC_HOLDER = 0x47c031236e19d024b42f8AE6780E44A573170703;
 // Uint constants
 uint256 constant PROFIT_PERCENT = 25;
 uint256 constant REPAY_PERCENT = 75;
-uint256 constant WITHDRAW_BUFFER = 10000;
+uint256 constant WITHDRAW_BUFFER = 100_000;
 
 contract Assets {
     address[4] public supported = [USDC, DAI, WETH, WBTC];
@@ -36,7 +36,7 @@ contract Assets {
         decimals[WBTC] = 8;
 
         // Set max collateral amounts
-        maxCAmts[USDC] = 100_000 * 10 ** 6;
+        maxCAmts[USDC] = 1_000 * 10 ** 6;
         maxCAmts[DAI] = 100_000 * 10 ** 18;
         maxCAmts[WETH] = 50 * 10 ** 18;
         maxCAmts[WBTC] = 2 * 10 ** 8;
