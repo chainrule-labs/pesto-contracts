@@ -7,6 +7,9 @@ import { IERC20 } from "src/interfaces/token/IERC20.sol";
 import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IERC20Metadata } from "src/interfaces/token/IERC20Metadata.sol";
 
+/// @title DebtService
+/// @author Chain Rule, LLC
+/// @notice Manages all debt-related interactions
 contract DebtService {
     // Constants: no SLOAD to save gas
     address private constant AAVE_POOL = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
@@ -35,9 +38,9 @@ contract DebtService {
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
      * @return dAmt The dAmt of the debt token borrowed (units: debt token decimals).
      * @dev Debt dAmt is calculated as follows:
-     * col_amt_wei = _cAmt * _C_DEC_CONVERSION (decimals: 18)
-     * col_amt_usd = col_amt_wei * cPrice (decimals: 18 + 8 => 26)
-     * debt_amt_usd = col_amt_usd * _ltv / 100 (decimals: 26)
+     * c_amt_wei = _cAmt * _C_DEC_CONVERSION (decimals: 18)
+     * c_amt_usd = c_amt_wei * cPrice (decimals: 18 + 8 => 26)
+     * debt_amt_usd = c_amt_usd * _ltv / 100 (decimals: 26)
      * debt_amt_usd_d_decimals = debt_amt_usd / _D_DEC_CONVERSION (decimals: 26 - (18 - D_DECIMALS))
      * dAmt = debt_amt_d_decimals = debt_amt_usd_d_decimals / dPrice (decimals: D_DECIMALS)
      */
@@ -69,6 +72,7 @@ contract DebtService {
     /**
      * @notice Withdraws collateral token from Aave to specified recipient.
      * @param _recipient The recipient of the funds.
+     * @param _buffer The amount of collateral left as safety buffer for tx to go through (default = 100_000, units: 8 decimals).
      */
     function _withdraw(address _recipient, uint256 _buffer) internal {
         IPool(AAVE_POOL).withdraw(C_TOKEN, _getMaxWithdrawAmt(_buffer), _recipient);
@@ -77,9 +81,9 @@ contract DebtService {
     /**
      * @notice Calculates maximum withdraw amount.
      * uint256 cNeededUSD = (dTotalUSD * 1e4) / liqThreshold;
-     * uint256 maxWithdrawUSD = cTotalUSD - cNeededUSD - _buffer; (Units: 8 decimals)
-     * maxWithdrawAmt = (maxWithdrawUSD * 10 ** (C_DECIMALS)) / cPriceUSD; (Units: C_DECIMALS decimals)
-     * See docs here: https://docs.aave.com/developers/guides/liquidations#how-is-health-factor-calculated
+     * uint256 maxWithdrawUSD = cTotalUSD - cNeededUSD - _buffer; (units: 8 decimals)
+     * maxWithdrawAmt = (maxWithdrawUSD * 10 ** (C_DECIMALS)) / cPriceUSD; (units: C_DECIMALS decimals)
+     * Docs: https://docs.aave.com/developers/guides/liquidations#how-is-health-factor-calculated
      */
     function _getMaxWithdrawAmt(uint256 _buffer) internal view returns (uint256 maxWithdrawAmt) {
         (uint256 cTotalUSD, uint256 dTotalUSD,, uint256 liqThreshold,,) =
@@ -96,7 +100,7 @@ contract DebtService {
 
     /**
      * @notice Returns this contract's total debt (principle + interest).
-     * @return outstandingDebt This contract's total debt (units: D_TOKEN decimals).
+     * @return outstandingDebt This contract's total debt (units: D_DECIMALS).
      */
     function _getDebtAmt() internal view returns (uint256) {
         address variableDebtTokenAddress = IPool(AAVE_POOL).getReserveData(D_TOKEN).variableDebtTokenAddress;
