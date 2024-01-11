@@ -10,11 +10,11 @@ contract MockUniswapGains {
     function exactOutputSingle(ISwapRouter.ExactOutputSingleParams calldata params)
         public
         payable
-        returns (uint256 amtIn, uint256 amtOut)
+        returns (uint256 amtIn)
     {
         uint256 callerInputTokenBalance = IERC20(params.tokenIn).balanceOf(msg.sender);
         amtIn = callerInputTokenBalance * (100 - PROFIT_PERCENT) / 100;
-        amtOut = IERC20(params.tokenOut).balanceOf(address(this));
+        uint256 amtOut = IERC20(params.tokenOut).balanceOf(address(this));
         TransferHelper.safeTransferFrom(params.tokenIn, msg.sender, address(this), amtIn);
         TransferHelper.safeTransfer(params.tokenOut, msg.sender, amtOut);
     }
@@ -28,11 +28,10 @@ contract MockUniswapLosses {
     function exactInputSingle(ISwapRouter.ExactInputSingleParams calldata params)
         public
         payable
-        returns (uint256 amtIn, uint256 amtOut)
+        returns (uint256 amtOut)
     {
-        amtIn = params.amountIn;
         amtOut = IERC20(params.tokenOut).balanceOf(address(this));
-        TransferHelper.safeTransferFrom(params.tokenIn, msg.sender, address(this), amtIn);
+        TransferHelper.safeTransferFrom(params.tokenIn, msg.sender, address(this), params.amountIn);
         TransferHelper.safeTransfer(params.tokenOut, msg.sender, amtOut);
     }
 }

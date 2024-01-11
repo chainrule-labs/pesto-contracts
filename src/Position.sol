@@ -49,7 +49,7 @@ contract Position is DebtService, SwapService {
      * @param _poolFee The fee of the Uniswap pool.
      * @param _exactOutput Whether to swap exact output or exact input (true for exact output, false for exact input).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through (only used if _exactOutput is false, supply 0 if true).
-     * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (default = 10, units: 8 decimals).
+     * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (default = 100, units: 8 decimals).
      */
     function close(uint24 _poolFee, bool _exactOutput, uint256 _swapAmtOutMin, uint256 _withdrawBuffer)
         public

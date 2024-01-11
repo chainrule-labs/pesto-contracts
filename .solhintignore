@@ -1,1 +1,3 @@
 src/dependencies
+src/interfaces/aave
+src/interfaces/uniswap

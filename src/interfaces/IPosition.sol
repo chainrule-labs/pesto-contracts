@@ -2,6 +2,7 @@
 pragma solidity ^0.8.21;
 
 interface IPosition {
+    /* solhint-disable func-name-mixedcase */
     // Meta data
     function OWNER() external returns (address);
     function C_TOKEN() external returns (address);

@@ -8,7 +8,7 @@ import { Test } from "forge-std/Test.sol";
 import { DebtServiceHarness } from "test/harness/DebtServiceHarness.t.sol";
 import { DebtUtils } from "test/services/utils/DebtUtils.t.sol";
 import { TokenUtils } from "test/services/utils/TokenUtils.t.sol";
-import { Assets, AAVE_ORACLE, AAVE_POOL, DAI, USDC, USDC_HOLDER } from "test/common/Constants.t.sol";
+import { Assets, AAVE_ORACLE, AAVE_POOL, DAI, USDC, USDC_HOLDER, WITHDRAW_BUFFER } from "test/common/Constants.t.sol";
 import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IPool } from "src/interfaces/aave/IPool.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
@@ -190,7 +190,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             uint256 preOwnerCTokenBal = IERC20(cToken).balanceOf(address(this));
 
             // Act
-            debtServices[i].exposed_withdraw(address(this), 10);
+            debtServices[i].exposed_withdraw(address(this), WITHDRAW_BUFFER);
 
             // Post-act data
             uint256 postATokenBal = _getATokenBalance(debtService, cToken);
@@ -218,7 +218,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             debtServices[i].exposed_borrow(assets.maxCAmts(cToken), ltv);
 
             // Act
-            uint256 maxWithdrawAmt = debtServices[i].exposed_getMaxWithdrawAmt(10);
+            uint256 maxWithdrawAmt = debtServices[i].exposed_getMaxWithdrawAmt(WITHDRAW_BUFFER);
 
             vm.prank(debtService);
             IPool(AAVE_POOL).withdraw(cToken, maxWithdrawAmt, debtService);
@@ -243,7 +243,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             IPool(AAVE_POOL).supply(cToken, _cAmt, debtService, 0);
 
             // Act
-            uint256 maxWithdrawAmt = debtServices[i].exposed_getMaxWithdrawAmt(10);
+            uint256 maxWithdrawAmt = debtServices[i].exposed_getMaxWithdrawAmt(WITHDRAW_BUFFER);
 
             IPool(AAVE_POOL).withdraw(cToken, maxWithdrawAmt, debtService);
             assert(true);
@@ -266,7 +266,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             debtServices[i].exposed_borrow(assets.maxCAmts(cToken), ltv);
 
             // Act
-            uint256 maxWithdrawAmt = debtServices[i].exposed_getMaxWithdrawAmt(10);
+            uint256 maxWithdrawAmt = debtServices[i].exposed_getMaxWithdrawAmt(WITHDRAW_BUFFER);
 
             // Add extra to max withdraw
             uint256 minAmount = maxWithdrawAmt / 100_000;
