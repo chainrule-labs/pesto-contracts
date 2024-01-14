@@ -25,7 +25,7 @@ contract PositionFactoryTest is Test {
         vm.selectFork(mainnetFork);
 
         vm.prank(CONTRACT_DEPLOYER);
-        positionFactory = new PositionFactory();
+        positionFactory = new PositionFactory(CONTRACT_DEPLOYER);
         assets = new Assets();
     }
 
@@ -105,4 +105,50 @@ contract PositionFactoryTest is Test {
             }
         }
     }
+
+    // function test_getPositions() public {
+    //     // Setup
+    //     address[4] memory supportedAssets = assets.getSupported();
+    //     address position;
+    //     address[] positions;
+    //     address owner;
+    //     address cToken;
+    //     address dToken;
+    //     address bToken;
+
+    //     // Act 1: no positions should exist
+    //     positions = positionFactory.getPositions(owner);
+
+    //     // Create all possible position
+    //     for (uint256 i; i < supportedAssets.length; i++) {
+    //         for (uint256 j; j < supportedAssets.length; j++) {
+    //             if (j != i) {
+    //                 for (uint256 k; k < supportedAssets.length; k++) {
+    //                     if (k != j) {
+    //                         position = positionFactory.createPosition(
+    //                             supportedAssets[i], supportedAssets[j], supportedAssets[k]
+    //                         );
+    //                         owner = IPosition(position).OWNER();
+    //                         cToken = IPosition(position).C_TOKEN();
+    //                         dToken = IPosition(position).D_TOKEN();
+    //                         bToken = IPosition(position).B_TOKEN();
+
+    //                         // Assertions
+    //                         assertNotEq(position, address(0));
+    //                         assertEq(owner, address(this));
+    //                         assertEq(cToken, supportedAssets[i]);
+    //                         assertEq(dToken, supportedAssets[j]);
+    //                         assertEq(bToken, supportedAssets[k]);
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+
+    //     // Expectation: all positions should exist
+
+    //     // position = positionFactory.createPosition(supportedAssets[i], supportedAssets[j], supportedAssets[k]);
+
+    //     // Act
+    // }
 }

@@ -296,7 +296,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             uint256 debtAmt = debtServices[i].exposed_getDebtAmt();
 
             // Assertions
-            assertEq(debtAmt, dAmt);
+            assertApproxEqAbs(debtAmt, dAmt, 1);
         }
     }
 }

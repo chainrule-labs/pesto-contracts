@@ -76,7 +76,7 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
 
         // Deploy PositionFactory
         vm.prank(CONTRACT_DEPLOYER);
-        positionFactory = new PositionFactory();
+        positionFactory = new PositionFactory(CONTRACT_DEPLOYER);
 
         // Deploy and store all possible positions
         for (uint256 i; i < supportedAssets.length; i++) {
