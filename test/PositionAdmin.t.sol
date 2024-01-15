@@ -6,21 +6,23 @@ import { Test } from "forge-std/Test.sol";
 
 // Local Imports
 import { PositionFactory } from "src/PositionFactory.sol";
-import { Position } from "src/Position.sol";
+import { PositionAdmin } from "src/PositionAdmin.sol";
 import { Assets, CONTRACT_DEPLOYER } from "test/common/Constants.t.sol";
+import { TokenUtils } from "test/common/utils/TokenUtils.t.sol";
+import { IPosition } from "src/interfaces/IPosition.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
-import { TokenUtils } from "test/services/utils/TokenUtils.t.sol";
 
 contract PositionAdminTest is Test, TokenUtils {
     /* solhint-disable func-name-mixedcase */
 
     // Test contracts
     PositionFactory public positionFactory;
-    Position public position;
     Assets public assets;
 
     // Test Storage
+    address public positionAddr;
     uint256 public mainnetFork;
+    address public owner = address(this);
 
     function setUp() public {
         // Setup: use mainnet fork
@@ -36,119 +38,169 @@ contract PositionAdminTest is Test, TokenUtils {
         positionFactory = new PositionFactory(CONTRACT_DEPLOYER);
 
         // Deploy Position
-        // TODO: Does it even make sense to deploy all possible positions to test PositionAdmin functionality???
-        position = Position(
-            payable(positionFactory.createPosition(supportedAssets[0], supportedAssets[3], supportedAssets[2]))
-        );
+        positionAddr = positionFactory.createPosition(supportedAssets[0], supportedAssets[3], supportedAssets[2]);
     }
 
+    /// @dev
+    // - The active fork should be the forked network created in the setup
     function test_ActiveFork() public {
         assertEq(vm.activeFork(), mainnetFork, "vm.activeFork() != mainnetFork");
     }
 
-    function test_ExtractNative(uint256 _amount) public {
-        // Setup: fund contract with _amount of native token
+    /// @dev
+    // - The contract's native balance should decrease by the amount transferred.
+    // - The owner's native balance should increase by the amount transferred.
+    function testFuzz_ExtractNative(uint256 _amount) public {
+        // Assumptions
         _amount = bound(_amount, 1, 1e22);
-        vm.deal(address(position), _amount);
+
+        // Setup
+        vm.deal(positionAddr, _amount);
 
         // Get pre-act balances
-        uint256 preContractBalance = address(position).balance;
-        uint256 preOwnerBalance = address(this).balance;
+        uint256 preContractBalance = positionAddr.balance;
+        uint256 preOwnerBalance = owner.balance;
 
         // Assertions
         assertEq(preContractBalance, _amount);
 
         // Act
-        vm.prank(address(this));
-        position.extractNative();
+        vm.prank(owner);
+        IPosition(positionAddr).extractNative();
 
         // Ge post-act balances
-        uint256 postContractBalance = address(position).balance;
-        uint256 postOwnerBalance = address(this).balance;
+        uint256 postContractBalance = positionAddr.balance;
+        uint256 postOwnerBalance = owner.balance;
 
         // Assertions
         assertEq(postContractBalance, 0);
         assertEq(postOwnerBalance, preOwnerBalance + _amount);
     }
 
-    function test_CannotExtractNative(uint256 _amount, address _invalidExtractor) public {
-        // Setup: fund contract with _amount of native token
+    /// @dev
+    // - It should revert with Unauthorized() error when called by an unauthorized sender.
+    function testFuzz_CannotExtractNative(uint256 _amount, address _sender) public {
+        // Assumptions
         _amount = bound(_amount, 1, 1e22);
-        vm.assume(_invalidExtractor != address(this));
-        vm.deal(address(position), _amount);
+        vm.assume(_sender != owner);
+
+        // Setup
+        vm.deal(positionAddr, _amount);
 
         // Act: attempt to extract native
-        vm.prank(_invalidExtractor);
-        vm.expectRevert(PositionFactory.Unauthorized.selector);
-        position.extractNative();
+        vm.prank(_sender);
+        vm.expectRevert(PositionAdmin.Unauthorized.selector);
+        IPosition(positionAddr).extractNative();
     }
 
-    function test_ExtractERC20(uint256 _amountUSDC, uint256 _amountDAI, uint256 _amountWETH, uint256 _amountWBTC)
-        public
-    {
+    /// @dev
+    // - The contract's ERC20 token balance should decrease by the amount transferred.
+    // - The owner's ERC20 token balance should increase by the amount transferred.
+    function testFuzz_ExtractERC20(uint256 _amount) public {
         // Setup
         address[4] memory supportedAssets = assets.getSupported();
-        _amountUSDC = bound(_amountUSDC, 1, assets.maxCAmts(supportedAssets[0]));
-        _amountDAI = bound(_amountDAI, 1, assets.maxCAmts(supportedAssets[1]));
-        _amountWETH = bound(_amountWETH, 1, assets.maxCAmts(supportedAssets[2]));
-        _amountWBTC = bound(_amountWBTC, 1, assets.maxCAmts(supportedAssets[3]));
-        uint256[4] memory _amounts = [_amountUSDC, _amountDAI, _amountWETH, _amountWBTC];
-        uint256[4] memory preContractBalances;
-        uint256[4] memory preOwnerBalances;
+        uint256 preContractBalance;
+        uint256 preOwnerBalance;
 
         for (uint256 i; i < supportedAssets.length; i++) {
-            // Fund contract with _amounts of each ERC20 token in supportedAssets
-            _fund(address(position), supportedAssets[i], _amounts[i]);
+            // Assumptions
+            _amount = bound(_amount, 1, assets.maxCAmts(supportedAssets[i]));
+
+            // Fund contract with _amount of each ERC20 token in supportedAssets
+            _fund(positionAddr, supportedAssets[i], _amount);
 
             // Get pre-act balances
-            preContractBalances[i] = IERC20(supportedAssets[i]).balanceOf(address(position));
-            preOwnerBalances[i] = IERC20(supportedAssets[i]).balanceOf(address(this));
+            preContractBalance = IERC20(supportedAssets[i]).balanceOf(positionAddr);
+            preOwnerBalance = IERC20(supportedAssets[i]).balanceOf(owner);
 
             // Assertions
-            assertEq(IERC20(supportedAssets[i]).balanceOf(address(position)), _amounts[i]);
-        }
+            assertEq(IERC20(supportedAssets[i]).balanceOf(positionAddr), _amount);
 
-        // Test
-        for (uint256 i; i < supportedAssets.length; i++) {
             // Act
-            vm.prank(address(this));
-            position.extractERC20(supportedAssets[i]);
+            vm.prank(owner);
+            IPosition(positionAddr).extractERC20(supportedAssets[i]);
 
             // Assertions
-            assertEq(IERC20(supportedAssets[i]).balanceOf(address(position)), 0);
-            assertEq(IERC20(supportedAssets[i]).balanceOf(address(this)), preOwnerBalances[i] + _amounts[i]);
+            assertEq(IERC20(supportedAssets[i]).balanceOf(positionAddr), 0);
+            assertEq(IERC20(supportedAssets[i]).balanceOf(owner), preOwnerBalance + _amount);
         }
     }
 
-    function test_CannotExtractERC20(
-        uint256 _amountUSDC,
-        uint256 _amountDAI,
-        uint256 _amountWETH,
-        uint256 _amountWBTC,
-        address _invalidExtractor
-    ) public {
+    /// @dev
+    // - It should revert with Unauthorized() error when called by an unauthorized sender.
+    function testFuzz_CannotExtractERC20(uint256 _amount, address _sender) public {
         // Setup
-        vm.assume(_invalidExtractor != address(this));
         address[4] memory supportedAssets = assets.getSupported();
-        _amountUSDC = bound(_amountUSDC, 1, assets.maxCAmts(supportedAssets[0]));
-        _amountDAI = bound(_amountDAI, 1, assets.maxCAmts(supportedAssets[1]));
-        _amountWETH = bound(_amountWETH, 1, assets.maxCAmts(supportedAssets[2]));
-        _amountWBTC = bound(_amountWBTC, 1, assets.maxCAmts(supportedAssets[3]));
-        uint256[4] memory _amounts = [_amountUSDC, _amountDAI, _amountWETH, _amountWBTC];
+
+        // Assumptions
+        vm.assume(_sender != owner);
 
         for (uint256 i; i < supportedAssets.length; i++) {
-            // Fund contract with _amounts of each ERC20 token in supportedAssets
-            _fund(address(position), supportedAssets[i], _amounts[i]);
+            // Assumptions
+            _amount = bound(_amount, 1, assets.maxCAmts(supportedAssets[i]));
+
+            // Fund contract with _amount of each ERC20 token in supportedAssets
+            _fund(positionAddr, supportedAssets[i], _amount);
+
+            // Act
+            vm.prank(_sender);
+            vm.expectRevert(PositionAdmin.Unauthorized.selector);
+            IPosition(positionAddr).extractERC20(supportedAssets[i]);
         }
+    }
+
+    /// @dev
+    // - The contract's native balance should increase by the amount transferred.
+    function testFuzz_Receive(uint256 _amount, address _sender) public {
+        // Assumptions
+        vm.assume(_amount != 0 && _amount <= 1000 ether);
+        uint256 gasMoney = 1 ether;
+        vm.deal(_sender, _amount + gasMoney);
+
+        // Pre-Act Data
+        uint256 preSenderBalance = _sender.balance;
+        uint256 preContractBalance = positionAddr.balance;
 
         // Act
-        for (uint256 i; i < supportedAssets.length; i++) {
-            vm.prank(_invalidExtractor);
-            vm.expectRevert(PositionFactory.Unauthorized.selector);
-            position.extractERC20(supportedAssets[i]);
-        }
+        vm.prank(_sender);
+        (bool success,) = payable(positionAddr).call{ value: _amount }("");
+
+        // Post-Act Data
+        uint256 postSenderBalance = _sender.balance;
+        uint256 postContractBalance = positionAddr.balance;
+
+        // Assertions
+        assertTrue(success);
+        assertEq(postSenderBalance, preSenderBalance - _amount);
+        assertEq(postContractBalance, preContractBalance + _amount);
     }
 
-    /// @dev Necessary for address(this) to receive native extractNative tests
+    /// @dev
+    // - The contract's native balance should increase by the amount transferred.
+    function testFuzz_Fallback(uint256 _amount, address _sender) public {
+        // Assumptions
+        vm.assume(_amount != 0 && _amount <= 1000 ether);
+        uint256 gasMoney = 1 ether;
+        vm.deal(_sender, _amount + gasMoney);
+
+        // Pre-Act Data
+        uint256 preSenderBalance = _sender.balance;
+        uint256 preContractBalance = positionAddr.balance;
+
+        // Act
+        vm.prank(_sender);
+        (bool success,) = positionAddr.call{ value: _amount }(abi.encodeWithSignature("nonExistentFn()"));
+
+        // Post-Act Data
+        uint256 postSenderBalance = _sender.balance;
+        uint256 postContractBalance = positionAddr.balance;
+
+        // Assertions
+        assertTrue(success);
+        assertEq(postSenderBalance, preSenderBalance - _amount);
+        assertEq(postContractBalance, preContractBalance + _amount);
+    }
+
+    /// @dev Necessary for the owner, address(this), to receive native extractNative tests
     receive() external payable { }
 }

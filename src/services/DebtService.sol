@@ -24,6 +24,9 @@ contract DebtService is PositionAdmin {
     address public immutable C_TOKEN;
     address public immutable D_TOKEN;
 
+    // Errors
+    error InsufficientAmt();
+
     constructor(address _owner, address _cToken, address _dToken) PositionAdmin(_owner) {
         C_TOKEN = _cToken;
         D_TOKEN = _dToken;
@@ -35,10 +38,10 @@ contract DebtService is PositionAdmin {
 
     /**
      * @notice Borrows debt token from Aave.
-     * @param _cAmt The cAmt of collateral to be supplied (units: collateral token decimals).
+     * @param _cAmt The amount of collateral to be supplied (units: C_DECIMALS).
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
-     * @return dAmt The dAmt of the debt token borrowed (units: debt token decimals).
-     * @dev Debt dAmt is calculated as follows:
+     * @return dAmt The amount of the debt token borrowed (units: D_DECIMALS).
+     * @dev dAmt is calculated as follows:
      * c_amt_wei = _cAmt * _C_DEC_CONVERSION (decimals: 18)
      * c_amt_usd = c_amt_wei * cPrice (decimals: 18 + 8 => 26)
      * debt_amt_usd = c_amt_usd * _ltv / 100 (decimals: 26)
@@ -59,22 +62,6 @@ contract DebtService is PositionAdmin {
 
         // 4. Borrow
         IPool(AAVE_POOL).borrow(D_TOKEN, dAmt, 2, 0, address(this));
-    }
-
-    /**
-     * @notice Increases the collateral of this contract's loan
-     * @param _cAmt The dAmt of collateral to be supplied (units: collateral token decimals).
-     * @return ltv The loan-to-value ratio for this contract's loan (ex: 75 is 75%).
-     */
-    function _increaseCollateral(uint256 _cAmt) internal returns (uint256 ltv) {
-        // 1. Approve Aave to spend _cAmt of this contract's C_TOKEN
-        IERC20(C_TOKEN).approve(AAVE_POOL, _cAmt);
-
-        // 2. Supply collateral to Aave
-        IPool(AAVE_POOL).supply(C_TOKEN, _cAmt, address(this), 0);
-
-        // 3. Get and return new loan-to-value ratio
-        (,,,, ltv,) = IPool(AAVE_POOL).getUserAccountData(address(this));
     }
 
     /**
@@ -99,7 +86,7 @@ contract DebtService is PositionAdmin {
      * @notice Calculates maximum withdraw amount.
      * uint256 cNeededUSD = (dTotalUSD * 1e4) / liqThreshold;
      * uint256 maxWithdrawUSD = cTotalUSD - cNeededUSD - _buffer; (units: 8 decimals)
-     * maxWithdrawAmt = (maxWithdrawUSD * 10 ** (C_DECIMALS)) / cPriceUSD; (units: C_DECIMALS decimals)
+     * maxWithdrawAmt = (maxWithdrawUSD * 10 ** (C_DECIMALS)) / cPriceUSD; (units: C_DECIMALS)
      * Docs: https://docs.aave.com/developers/guides/liquidations#how-is-health-factor-calculated
      */
     function _getMaxWithdrawAmt(uint256 _buffer) internal view returns (uint256 maxWithdrawAmt) {
@@ -125,16 +112,30 @@ contract DebtService is PositionAdmin {
     }
 
     /**
+     * @notice Increases the collateral amount for this contract's loan.
+     * @param _cAmt The amount of collateral to be supplied (units: C_DECIMALS).
+     */
+    function addCollateral(uint256 _cAmt) public payable onlyOwner {
+        // 1. Transfer collateral from owner to this contract
+        IERC20(C_TOKEN).transferFrom(msg.sender, address(this), _cAmt);
+
+        // 2. Approve Aave to spend _cAmt of this contract's C_TOKEN
+        IERC20(C_TOKEN).approve(AAVE_POOL, _cAmt);
+
+        // 3. Supply collateral to Aave
+        IPool(AAVE_POOL).supply(C_TOKEN, _cAmt, address(this), 0);
+    }
+
+    /**
      * @notice Repays any outstanding debt to Aave and transfers remaining collateral from Aave to owner.
-     * @param _dAmt The amount of debt token to repay to Aave.
+     * @param _dAmt The amount of debt token to repay to Aave (units: D_DECIMALS).
+     *              To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
      * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (default = 100_000, units: 8 decimals).
      */
-    function repayOustandingDebt(uint256 _dAmt, uint256 _withdrawBuffer) public payable onlyOwner {
+    function repayAfterClose(uint256 _dAmt, uint256 _withdrawBuffer) public payable onlyOwner {
         IERC20(D_TOKEN).transferFrom(msg.sender, address(this), _dAmt);
 
-        IERC20(D_TOKEN).approve(AAVE_POOL, _dAmt);
-
-        IPool(AAVE_POOL).repay(D_TOKEN, _dAmt, 2, address(this));
+        _repay(_dAmt);
 
         _withdraw(OWNER, _withdrawBuffer);
     }

@@ -7,7 +7,7 @@ import { Test } from "forge-std/Test.sol";
 // Local Imports
 import { SwapServiceHarness } from "test/harness/SwapServiceHarness.t.sol";
 import { Assets, DAI, USDC, USDC_HOLDER } from "test/common/Constants.t.sol";
-import { TokenUtils } from "test/services/utils/TokenUtils.t.sol";
+import { TokenUtils } from "test/common/utils/TokenUtils.t.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
 contract SwapServiceTest is Test, TokenUtils {
@@ -34,6 +34,8 @@ contract SwapServiceTest is Test, TokenUtils {
         swapServiceAddr = address(swapService);
     }
 
+    /// @dev
+    // - The active fork should be the forked network created in the setup
     function test_ActiveFork() public {
         assertEq(vm.activeFork(), mainnetFork, "vm.activeFork() != mainnetFork");
     }
@@ -42,7 +44,6 @@ contract SwapServiceTest is Test, TokenUtils {
     // - The swap service's input token balance should decrease by the amount inputted.
     // - The swap service's output token balance should increase by the amount outputted.
     // - The above should be true for all supported tokens.
-
     function test_SwapExactInput() public {
         for (uint256 i; i < supportedAssets.length; i++) {
             for (uint256 j; j < supportedAssets.length; j++) {
@@ -88,7 +89,6 @@ contract SwapServiceTest is Test, TokenUtils {
     // - The swap service's input token balance should decrease by the amount inputted.
     // - The swap service's output token balance should increase by the amount outputted.
     // - The above should be true for all supported tokens.
-
     function test_SwapExactOutput() public {
         for (uint256 i; i < supportedAssets.length; i++) {
             for (uint256 j; j < supportedAssets.length; j++) {

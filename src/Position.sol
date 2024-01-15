@@ -83,17 +83,4 @@ contract Position is DebtService, SwapService {
         // 5. Emit event
         emit Close(gains);
     }
-
-    /**
-     * @notice Increases the collateral amount for this contract's short position.
-     * @param _cAmt The amount of collateral to be supplied for this contract's loan (units: C_DECIMALS).
-     * @return ltv The loan-to-value ratio for this contract's loan (ex: 75 is 75%).
-     */
-    function addCollateral(uint256 _cAmt) public payable onlyOwner returns (uint256 ltv) {
-        // 1. Transfer collateral from owner to this contract
-        IERC20(C_TOKEN).transferFrom(msg.sender, address(this), _cAmt);
-
-        // 2. Increase collateral for this contract's loan and return latest loan-to-value ratio
-        ltv = _increaseCollateral(_cAmt);
-    }
 }

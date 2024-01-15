@@ -10,10 +10,10 @@ On-chain shorting via Aave and Uniswap.
 
 ## To-Do
 
-Contract Logic
+Contract Logic:
 
 -   [x] Add a onlyOwner modifier
--   [x] Add repayOutstandingDebt
+-   [x] Add repayAfterClose
 -   [x] Add ability to retreive all positions by owner (getPositions)
 -   [x] Add extractNative
     -   [x] PositionFactory
@@ -22,26 +22,35 @@ Contract Logic
     -   [x] PositionFactory
     -   [x] Position
 -   [x] Increase collateral (addCollateral)
--   [ ] Add read-only methods for Position owners to get info about their position (i.e., debt, collateral, ltv, etc.)
+
+Unit Tests:
+
+-   [x] test_RepayAfterClose
+-   [x] test_RepayAfterClose (Unauthorized)
+-   [x] test_CannotShort (Unauthorized)
+-   [x] test_CannotClose (Unauthorized)
+-   [x] test_GetPositions
+-   [x] test_AddCollateral
+-   [x] test_CannotAddCollateral (Unauthorized)
+-   [x] test_ExtractNative
+-   [x] test_CannotExtractNative (Unauthorized)
+-   [x] test_ExtractERC20
+-   [x] test_CannotExtractERC20 (Unauthorized)
+-   [x] test_receive
+-   [x] test_fallback
+
+Chores:
+
+-   [x] Move TokenUtils from `test/services/utils` to `/common/utils`
+
+Considerations:
+
 -   [ ] Consider removing Solmate entirely and using OpenZeppelin’s SafeERC20 lib:
 -   [ ] Consider emitting events through position factory
 -   [ ] Consider adding a require statement in Position constructor to make sure only the PositionFactory can deploy Position contracts
 -   [ ] Consider inheriting OpenZeppelin's Ownable contract, since both PositionFactory and PositionAdmin need to be ownable
 
-Unit Tests:
-
--   [ ] test_RepayOutstandingDebt
--   [ ] test_GetPositions
--   [ ] test_AddCollateral
--   [x] test_ExtractNative
--   [x] test_CannotExtractNative
--   [x] test_ExtractERC20
--   [x] test_CannotExtractERC20
--   [ ] test_receive
--   [ ] test_fallback
--   [ ] Consider moving TokenUtils from `test/services/utils` to `/common`
-
-Security Considerations:
+Security Notes:
 
 -   A vulnerability was recently found in Solmate's safeTransferLib
     -   Does not check for token contract's existence

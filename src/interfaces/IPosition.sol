@@ -14,7 +14,8 @@ interface IPosition {
     function close(uint24 _poolFee, bool _exactOutput, uint256 _swapAmtOutMin, uint256 _withdrawBuffer)
         external
         payable;
-    function addCollateral(uint256 _cAmt) external payable returns (uint256 ltv);
+    function addCollateral(uint256 _cAmt) external payable;
+    function repayAfterClose(uint256 _dAmt, uint256 _withdrawBuffer) external payable;
 
     // Admin Functions
     function extractNative() external payable;
