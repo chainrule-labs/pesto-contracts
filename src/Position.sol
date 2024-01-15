@@ -10,7 +10,7 @@ import { IERC20 } from "src/interfaces/token/IERC20.sol";
 /// @author Chain Rule, LLC
 /// @notice Manages the owner's individual position
 contract Position is DebtService, SwapService {
-    // Immutable: no SLOAD to save gas
+    // Immutables: no SLOAD to save gas
     address public immutable B_TOKEN;
 
     // Events
@@ -95,22 +95,5 @@ contract Position is DebtService, SwapService {
 
         // 2. Increase collateral for this contract's loan and return latest loan-to-value ratio
         ltv = _increaseCollateral(_cAmt);
-    }
-
-    /**
-     * @notice Allows owner to withdraw all of this contract's native token balance.
-     */
-    function extractNative() public onlyOwner {
-        payable(msg.sender).transfer(address(this).balance);
-    }
-
-    /**
-     * @notice Allows owner to withdraw all of a specified ERC20 token's balance from this contract.
-     * @param _token The address of token to remove.
-     */
-    function extractERC20(address _token) public onlyOwner {
-        uint256 balance = IERC20(_token).balanceOf(address(this));
-
-        IERC20(_token).transfer(msg.sender, balance);
     }
 }

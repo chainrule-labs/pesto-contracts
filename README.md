@@ -1,4 +1,4 @@
-# shAve
+# shAave
 
 On-chain shorting via Aave and Uniswap.
 
@@ -25,15 +25,21 @@ Contract Logic
 -   [ ] Add read-only methods for Position owners to get info about their position (i.e., debt, collateral, ltv, etc.)
 -   [ ] Consider removing Solmate entirely and using OpenZeppelin’s SafeERC20 lib:
 -   [ ] Consider emitting events through position factory
+-   [ ] Consider adding a require statement in Position constructor to make sure only the PositionFactory can deploy Position contracts
 -   [ ] Consider inheriting OpenZeppelin's Ownable contract, since both PositionFactory and PositionAdmin need to be ownable
 
 Unit Tests:
 
--   [ ] repayOutstandingDebt
--   [ ] getPositions
--   [ ] addCollateral
--   [ ] extractNative
--   [ ] extractERC20
+-   [ ] test_RepayOutstandingDebt
+-   [ ] test_GetPositions
+-   [ ] test_AddCollateral
+-   [x] test_ExtractNative
+-   [x] test_CannotExtractNative
+-   [x] test_ExtractERC20
+-   [x] test_CannotExtractERC20
+-   [ ] test_receive
+-   [ ] test_fallback
+-   [ ] Consider moving TokenUtils from `test/services/utils` to `/common`
 
 Security Considerations:
 
