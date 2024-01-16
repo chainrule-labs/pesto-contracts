@@ -3,6 +3,6 @@
 	"rules": {
 		"compiler-version": ["error", ">=0.8.0"],
 		"no-inline-assembly": ["off", ">=0.8.0"],
-		"func-visibility": ["off", ">=0.7.0"]
+		"func-visibility": ["warn", { "ignoreConstructors": true }]
 	}
 }

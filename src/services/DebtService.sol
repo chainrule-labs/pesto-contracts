@@ -24,9 +24,6 @@ contract DebtService is PositionAdmin {
     address public immutable C_TOKEN;
     address public immutable D_TOKEN;
 
-    // Errors
-    error InsufficientAmt();
-
     constructor(address _owner, address _cToken, address _dToken) PositionAdmin(_owner) {
         C_TOKEN = _cToken;
         D_TOKEN = _dToken;

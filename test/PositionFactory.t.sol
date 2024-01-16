@@ -164,6 +164,9 @@ contract PositionFactoryTest is Test, TokenUtils {
 
         // Assertions 2
         assertEq(positions.length, 36);
+        for (uint256 i; i < positions.length; i++) {
+            assertNotEq(positions[i], address(0));
+        }
     }
 
     /// @dev
