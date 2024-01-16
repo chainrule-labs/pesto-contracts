@@ -4,6 +4,7 @@ pragma solidity ^0.8.21;
 // Local Imports
 import { DebtService } from "src/services/DebtService.sol";
 import { SwapService } from "src/services/SwapService.sol";
+import { SafeTransferLib, ERC20 } from "solmate/utils/SafeTransferLib.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
 /// @title Position
@@ -32,7 +33,7 @@ contract Position is DebtService, SwapService {
      */
     function short(uint256 _cAmt, uint256 _ltv, uint256 _swapAmtOutMin, uint24 _poolFee) public payable onlyOwner {
         // 1. Transfer collateral to this contract
-        IERC20(C_TOKEN).transferFrom(msg.sender, address(this), _cAmt);
+        SafeTransferLib.safeTransferFrom(ERC20(C_TOKEN), msg.sender, address(this), _cAmt);
 
         // 2. Borrow debt token
         uint256 dAmt = _borrow(_cAmt, _ltv);
@@ -77,7 +78,7 @@ contract Position is DebtService, SwapService {
         uint256 gains = bTokenBalance - bAmtIn;
 
         if (gains > 0) {
-            IERC20(B_TOKEN).transfer(OWNER, gains);
+            SafeTransferLib.safeTransfer(ERC20(B_TOKEN), OWNER, gains);
         }
 
         // 5. Emit event
