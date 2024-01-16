@@ -1,8 +1,8 @@
 # shAave
 
-![license-badge](https://img.shields.io/badge/license-MIT-yellow?link=https%3A%2F%2Fgithub.com%2Fchainrule-labs%2Fshaave-contracts%2Fblob%2Fmain%2FLICENSE.md)
-![ci-badge](https://img.shields.io/github/actions/workflow/status/chainrule-labs/shaave-contracts/ci.yml?branch=main&logo=github&label=CI&link=https%3A%2F%2Fgithub.com%2Fchainrule-labs%2Fshaave-contracts%2Factions)
-![coverage-badge](https://img.shields.io/codecov/c/gh/chainrule-labs/shaave-contracts?logo=codecov&link=https%3A%2F%2Fcodecov.io%2Fgh%2Fchainrule-labs%2Fshaave-contracts)
+[![license-badge](https://img.shields.io/badge/license-MIT-yellow)](https://github.com/chainrule-labs/shaave-contracts/blob/main/LICENSE.md)
+[![ci-badge](https://img.shields.io/github/actions/workflow/status/chainrule-labs/shaave-contracts/ci.yml?branch=main&logo=github&label=CI)](https://github.com/chainrule-labs/shaave-contracts/actions)
+[![coverage](https://img.shields.io/codecov/c/github/chainrule-labs/shaave-contracts?token=K4Q3GAWUPJ&label=coverage&logo=codecov)](https://codecov.io/gh/chainrule-labs/shaave-contracts)
 
 On-chain shorting via Aave and Uniswap.
 
