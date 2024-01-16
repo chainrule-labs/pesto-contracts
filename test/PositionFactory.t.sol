@@ -22,6 +22,9 @@ contract PositionFactoryTest is Test, TokenUtils {
     uint256 public mainnetFork;
     address public positionOwner = address(this);
 
+    // Errors
+    error OwnableUnauthorizedAccount(address account);
+
     function setUp() public {
         // Setup: use mainnet fork
         mainnetFork = vm.createFork(vm.envString("RPC_URL"));
@@ -207,7 +210,7 @@ contract PositionFactoryTest is Test, TokenUtils {
 
         // Act: attempt to extract native
         vm.prank(_sender);
-        vm.expectRevert(PositionFactory.Unauthorized.selector);
+        vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, _sender));
         positionFactory.extractNative();
     }
 
@@ -262,7 +265,7 @@ contract PositionFactoryTest is Test, TokenUtils {
 
             // Act
             vm.prank(_sender);
-            vm.expectRevert(PositionFactory.Unauthorized.selector);
+            vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, _sender));
             positionFactory.extractERC20(supportedAssets[i]);
         }
     }

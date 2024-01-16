@@ -3,32 +3,28 @@ pragma solidity ^0.8.21;
 
 // Local
 import { Position } from "src/Position.sol";
+import { Ownable } from "src/dependencies/access/Ownable.sol";
 import { SafeTransferLib, ERC20 } from "solmate/utils/SafeTransferLib.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
 /// @title Position Factory
 /// @author Chain Rule, LLC
 /// @notice Creates user position contracts and stores their addresses
-contract PositionFactory {
+contract PositionFactory is Ownable {
     // Constants: no SLOAD to save gas
     address private constant CONTRACT_DEPLOYER = 0x0a5B347509621337cDDf44CBCf6B6E7C9C908CD2;
 
-    // Immutables: no SLOAD to save gas
-    address public immutable OWNER;
-
     // Factory Storage
-    //      Mapping from owner to cToken to dToken to bToken to position
+    /// @dev Mapping from owner to cToken to dToken to bToken to position
     mapping(address => mapping(address => mapping(address => mapping(address => address)))) public positions;
-    //      Mapping from owner to list of positions
     mapping(address => address[]) public positionsLookup;
 
     // Errors
     error Unauthorized();
     error PositionExists();
 
-    constructor(address _owner) {
+    constructor(address _owner) Ownable(_owner) {
         if (msg.sender != CONTRACT_DEPLOYER) revert Unauthorized();
-        OWNER = _owner;
     }
 
     /**
@@ -84,10 +80,4 @@ contract PositionFactory {
      * @notice Executes when native is sent to this contract with a plain transaction.
      */
     receive() external payable { } // solhint-disable-line no-empty-blocks
-
-    /// @notice Check if the caller is the owner of the PositionFactory contract
-    modifier onlyOwner() {
-        if (msg.sender != OWNER) revert Unauthorized();
-        _;
-    }
 }
