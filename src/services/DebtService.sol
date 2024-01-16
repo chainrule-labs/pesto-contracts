@@ -2,6 +2,7 @@
 pragma solidity ^0.8.21;
 
 // Local Imports
+import { PositionAdmin } from "src/PositionAdmin.sol";
 import { IPool } from "src/interfaces/aave/IPool.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
@@ -10,7 +11,7 @@ import { IERC20Metadata } from "src/interfaces/token/IERC20Metadata.sol";
 /// @title DebtService
 /// @author Chain Rule, LLC
 /// @notice Manages all debt-related interactions
-contract DebtService {
+contract DebtService is PositionAdmin {
     // Constants: no SLOAD to save gas
     address private constant AAVE_POOL = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
     address private constant AAVE_ORACLE = 0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7;
@@ -23,7 +24,7 @@ contract DebtService {
     address public immutable C_TOKEN;
     address public immutable D_TOKEN;
 
-    constructor(address _cToken, address _dToken) {
+    constructor(address _owner, address _cToken, address _dToken) PositionAdmin(_owner) {
         C_TOKEN = _cToken;
         D_TOKEN = _dToken;
         C_DECIMALS = IERC20Metadata(_cToken).decimals();
@@ -34,10 +35,10 @@ contract DebtService {
 
     /**
      * @notice Borrows debt token from Aave.
-     * @param _cAmt The dAmt of collateral to be supplied (units: collateral token decimals).
+     * @param _cAmt The amount of collateral to be supplied (units: C_DECIMALS).
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
-     * @return dAmt The dAmt of the debt token borrowed (units: debt token decimals).
-     * @dev Debt dAmt is calculated as follows:
+     * @return dAmt The amount of the debt token borrowed (units: D_DECIMALS).
+     * @dev dAmt is calculated as follows:
      * c_amt_wei = _cAmt * _C_DEC_CONVERSION (decimals: 18)
      * c_amt_usd = c_amt_wei * cPrice (decimals: 18 + 8 => 26)
      * debt_amt_usd = c_amt_usd * _ltv / 100 (decimals: 26)
@@ -82,7 +83,7 @@ contract DebtService {
      * @notice Calculates maximum withdraw amount.
      * uint256 cNeededUSD = (dTotalUSD * 1e4) / liqThreshold;
      * uint256 maxWithdrawUSD = cTotalUSD - cNeededUSD - _buffer; (units: 8 decimals)
-     * maxWithdrawAmt = (maxWithdrawUSD * 10 ** (C_DECIMALS)) / cPriceUSD; (units: C_DECIMALS decimals)
+     * maxWithdrawAmt = (maxWithdrawUSD * 10 ** (C_DECIMALS)) / cPriceUSD; (units: C_DECIMALS)
      * Docs: https://docs.aave.com/developers/guides/liquidations#how-is-health-factor-calculated
      */
     function _getMaxWithdrawAmt(uint256 _buffer) internal view returns (uint256 maxWithdrawAmt) {
@@ -105,5 +106,34 @@ contract DebtService {
     function _getDebtAmt() internal view returns (uint256) {
         address variableDebtTokenAddress = IPool(AAVE_POOL).getReserveData(D_TOKEN).variableDebtTokenAddress;
         return IERC20(variableDebtTokenAddress).balanceOf(address(this));
+    }
+
+    /**
+     * @notice Increases the collateral amount for this contract's loan.
+     * @param _cAmt The amount of collateral to be supplied (units: C_DECIMALS).
+     */
+    function addCollateral(uint256 _cAmt) public payable onlyOwner {
+        // 1. Transfer collateral from owner to this contract
+        IERC20(C_TOKEN).transferFrom(msg.sender, address(this), _cAmt);
+
+        // 2. Approve Aave to spend _cAmt of this contract's C_TOKEN
+        IERC20(C_TOKEN).approve(AAVE_POOL, _cAmt);
+
+        // 3. Supply collateral to Aave
+        IPool(AAVE_POOL).supply(C_TOKEN, _cAmt, address(this), 0);
+    }
+
+    /**
+     * @notice Repays any outstanding debt to Aave and transfers remaining collateral from Aave to owner.
+     * @param _dAmt The amount of debt token to repay to Aave (units: D_DECIMALS).
+     *              To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
+     * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (default = 100_000, units: 8 decimals).
+     */
+    function repayAfterClose(uint256 _dAmt, uint256 _withdrawBuffer) public payable onlyOwner {
+        IERC20(D_TOKEN).transferFrom(msg.sender, address(this), _dAmt);
+
+        _repay(_dAmt);
+
+        _withdraw(OWNER, _withdrawBuffer);
     }
 }

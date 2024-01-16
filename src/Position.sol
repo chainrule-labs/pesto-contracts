@@ -10,16 +10,16 @@ import { IERC20 } from "src/interfaces/token/IERC20.sol";
 /// @author Chain Rule, LLC
 /// @notice Manages the owner's individual position
 contract Position is DebtService, SwapService {
-    // Immutable: no SLOAD to save gas
-    address public immutable OWNER;
+    // Immutables: no SLOAD to save gas
     address public immutable B_TOKEN;
 
     // Events
     event Short(uint256 cAmt, uint256 dAmt, uint256 bAmt);
     event Close(uint256 gains);
 
-    constructor(address _owner, address _cToken, address _dToken, address _bToken) DebtService(_cToken, _dToken) {
-        OWNER = _owner;
+    constructor(address _owner, address _cToken, address _dToken, address _bToken)
+        DebtService(_owner, _cToken, _dToken)
+    {
         B_TOKEN = _bToken;
     }
 
@@ -30,8 +30,8 @@ contract Position is DebtService, SwapService {
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
      * @param _poolFee The fee of the Uniswap pool.
      */
-    function short(uint256 _cAmt, uint256 _ltv, uint256 _swapAmtOutMin, uint24 _poolFee) public payable {
-        // 1. Transfer collateral to this contact
+    function short(uint256 _cAmt, uint256 _ltv, uint256 _swapAmtOutMin, uint24 _poolFee) public payable onlyOwner {
+        // 1. Transfer collateral to this contract
         IERC20(C_TOKEN).transferFrom(msg.sender, address(this), _cAmt);
 
         // 2. Borrow debt token
@@ -54,6 +54,7 @@ contract Position is DebtService, SwapService {
     function close(uint24 _poolFee, bool _exactOutput, uint256 _swapAmtOutMin, uint256 _withdrawBuffer)
         public
         payable
+        onlyOwner
     {
         uint256 bTokenBalance = IERC20(B_TOKEN).balanceOf(address(this));
 
@@ -69,7 +70,7 @@ contract Position is DebtService, SwapService {
         // 2. Repay debt token
         _repay(dAmtOut);
 
-        // 3. Withdraw collateral to user
+        // 3. Withdraw collateral to owner
         _withdraw(OWNER, _withdrawBuffer);
 
         // 4. Pay gains if any

@@ -7,7 +7,7 @@ import { DebtService } from "src/services/DebtService.sol";
 contract DebtServiceHarness is DebtService {
     /* solhint-disable func-name-mixedcase */
 
-    constructor(address _cToken, address _dToken) DebtService(_cToken, _dToken) { }
+    constructor(address _owner, address _cToken, address _dToken) DebtService(_owner, _cToken, _dToken) { }
 
     function exposed_cDecimalConversion() external view returns (uint64) {
         return _C_DEC_CONVERSION;
