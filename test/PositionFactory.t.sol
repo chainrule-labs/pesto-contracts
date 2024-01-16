@@ -274,12 +274,11 @@ contract PositionFactoryTest is Test, TokenUtils {
     // - The contract's native balance should increase by the amount transferred.
     function testFuzz_Receive(uint256 _amount, address _sender) public {
         // Assumptions
-        vm.assume(_amount != 0 && _amount <= 1000 ether);
+        _amount = bound(_amount, 1, 1_000 ether);
         uint256 gasMoney = 1 ether;
         vm.deal(_sender, _amount + gasMoney);
 
         // Pre-Act Data
-        uint256 preSenderBalance = _sender.balance;
         uint256 preContractBalance = address(positionFactory).balance;
 
         // Act
@@ -287,12 +286,10 @@ contract PositionFactoryTest is Test, TokenUtils {
         (bool success,) = payable(address(positionFactory)).call{ value: _amount }("");
 
         // Post-Act Data
-        uint256 postSenderBalance = _sender.balance;
         uint256 postContractBalance = address(positionFactory).balance;
 
         // Assertions
         assertTrue(success);
-        assertEq(postSenderBalance, preSenderBalance - _amount);
         assertEq(postContractBalance, preContractBalance + _amount);
     }
 

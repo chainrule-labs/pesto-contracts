@@ -19,6 +19,7 @@ address constant USDC_HOLDER = 0x47c031236e19d024b42f8AE6780E44A573170703;
 uint256 constant PROFIT_PERCENT = 25;
 uint256 constant REPAY_PERCENT = 75;
 uint256 constant WITHDRAW_BUFFER = 100_000;
+uint256 constant REPAY_BUFFER = 2;
 
 contract Assets {
     address[4] public supported = [USDC, DAI, WETH, WBTC];

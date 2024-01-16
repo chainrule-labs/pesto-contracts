@@ -102,11 +102,12 @@ contract DebtService is PositionAdmin {
 
     /**
      * @notice Returns this contract's total debt (principle + interest).
-     * @return outstandingDebt This contract's total debt (units: D_DECIMALS).
+     * @return outstandingDebt This contract's total debt + small buffer (units: D_DECIMALS).
      */
     function _getDebtAmt() internal view returns (uint256) {
         address variableDebtTokenAddress = IPool(AAVE_POOL).getReserveData(D_TOKEN).variableDebtTokenAddress;
-        return IERC20(variableDebtTokenAddress).balanceOf(address(this));
+        /// @dev adds repay buffer of 2 units to ensure a full repay (units: D_DECIMALS)
+        return IERC20(variableDebtTokenAddress).balanceOf(address(this)) + 2;
     }
 
     /**

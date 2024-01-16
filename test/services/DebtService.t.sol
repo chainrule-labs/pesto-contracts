@@ -9,7 +9,16 @@ import { PositionAdmin } from "src/PositionAdmin.sol";
 import { DebtServiceHarness } from "test/harness/DebtServiceHarness.t.sol";
 import { DebtUtils } from "test/services/utils/DebtUtils.t.sol";
 import { TokenUtils } from "test/common/utils/TokenUtils.t.sol";
-import { Assets, AAVE_ORACLE, AAVE_POOL, DAI, USDC, USDC_HOLDER, WITHDRAW_BUFFER } from "test/common/Constants.t.sol";
+import {
+    Assets,
+    AAVE_ORACLE,
+    AAVE_POOL,
+    DAI,
+    REPAY_BUFFER,
+    USDC,
+    USDC_HOLDER,
+    WITHDRAW_BUFFER
+} from "test/common/Constants.t.sol";
 import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IPool } from "src/interfaces/aave/IPool.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
@@ -295,7 +304,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             uint256 debtAmt = debtServices[i].exposed_getDebtAmt();
 
             // Assertions
-            assertApproxEqAbs(debtAmt, dAmt, 1);
+            assertApproxEqAbs(debtAmt, dAmt + REPAY_BUFFER, 1);
         }
     }
 
