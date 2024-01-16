@@ -3,6 +3,7 @@ pragma solidity ^0.8.21;
 
 // Local Imports
 import { PositionAdmin } from "src/PositionAdmin.sol";
+import { SafeTransferLib, ERC20 } from "solmate/utils/SafeTransferLib.sol";
 import { IPool } from "src/interfaces/aave/IPool.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
@@ -47,7 +48,7 @@ contract DebtService is PositionAdmin {
      */
     function _borrow(uint256 _cAmt, uint256 _ltv) internal returns (uint256 dAmt) {
         // 1. Supply collateral to Aave
-        IERC20(C_TOKEN).approve(AAVE_POOL, _cAmt);
+        SafeTransferLib.safeApprove(ERC20(C_TOKEN), AAVE_POOL, _cAmt);
         IPool(AAVE_POOL).supply(C_TOKEN, _cAmt, address(this), 0);
 
         // 2. Get asset prices USD
@@ -66,7 +67,7 @@ contract DebtService is PositionAdmin {
      * @param _dAmt The amount of debt token to repay to Aave.
      */
     function _repay(uint256 _dAmt) internal {
-        IERC20(D_TOKEN).approve(AAVE_POOL, _dAmt);
+        SafeTransferLib.safeApprove(ERC20(D_TOKEN), AAVE_POOL, _dAmt);
         IPool(AAVE_POOL).repay(D_TOKEN, _dAmt, 2, address(this));
     }
 
@@ -114,10 +115,10 @@ contract DebtService is PositionAdmin {
      */
     function addCollateral(uint256 _cAmt) public payable onlyOwner {
         // 1. Transfer collateral from owner to this contract
-        IERC20(C_TOKEN).transferFrom(msg.sender, address(this), _cAmt);
+        SafeTransferLib.safeTransferFrom(ERC20(C_TOKEN), msg.sender, address(this), _cAmt);
 
         // 2. Approve Aave to spend _cAmt of this contract's C_TOKEN
-        IERC20(C_TOKEN).approve(AAVE_POOL, _cAmt);
+        SafeTransferLib.safeApprove(ERC20(C_TOKEN), AAVE_POOL, _cAmt);
 
         // 3. Supply collateral to Aave
         IPool(AAVE_POOL).supply(C_TOKEN, _cAmt, address(this), 0);
@@ -130,7 +131,7 @@ contract DebtService is PositionAdmin {
      * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (default = 100_000, units: 8 decimals).
      */
     function repayAfterClose(uint256 _dAmt, uint256 _withdrawBuffer) public payable onlyOwner {
-        IERC20(D_TOKEN).transferFrom(msg.sender, address(this), _dAmt);
+        SafeTransferLib.safeTransferFrom(ERC20(D_TOKEN), msg.sender, address(this), _dAmt);
 
         _repay(_dAmt);
 

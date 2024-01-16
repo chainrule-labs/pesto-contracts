@@ -3,6 +3,7 @@ pragma solidity ^0.8.21;
 
 // Local Imports
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
+import { SafeTransferLib, ERC20 } from "solmate/utils/SafeTransferLib.sol";
 
 /// @title Position Admin
 /// @author Chain Rule, LLC
@@ -32,7 +33,7 @@ contract PositionAdmin {
     function extractERC20(address _token) public payable onlyOwner {
         uint256 balance = IERC20(_token).balanceOf(address(this));
 
-        IERC20(_token).transfer(msg.sender, balance);
+        SafeTransferLib.safeTransfer(ERC20(_token), msg.sender, balance);
     }
 
     /**

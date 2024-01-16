@@ -3,6 +3,7 @@ pragma solidity ^0.8.21;
 
 // Local
 import { Position } from "src/Position.sol";
+import { SafeTransferLib, ERC20 } from "solmate/utils/SafeTransferLib.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
 /// @title Position Factory
@@ -71,7 +72,7 @@ contract PositionFactory {
     function extractERC20(address _token) public payable onlyOwner {
         uint256 balance = IERC20(_token).balanceOf(address(this));
 
-        IERC20(_token).transfer(msg.sender, balance);
+        SafeTransferLib.safeTransfer(ERC20(_token), msg.sender, balance);
     }
 
     /**
