@@ -14,8 +14,15 @@ On-chain shorting via Aave and Uniswap.
 
 ## To-Do
 
--   [ ] Impelemnt protocol fee
--   [ ] Implement frontend incentive
+-   [x] Impelemnt protocol fee
+-   [x] Implement frontend incentive
+-   [x] Account for case where there is no client (if no frontend, they would be able to pass their own address...)
+-   [x] Should not repay more to Aave than what is owed when closing a position
+
+Unit Tests:
+
+-   [x] Mock feel collector in tests
+-   [x] Should not repay more to Aave than what is owed when closing a position
 
 Considerations:
 

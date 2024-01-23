@@ -8,14 +8,18 @@ import { VmSafe } from "forge-std/Vm.sol";
 // Local Imports
 import { PositionFactory } from "src/PositionFactory.sol";
 import { PositionAdmin } from "src/PositionAdmin.sol";
+import { FeeCollector } from "src/FeeCollector.sol";
 import {
     Assets,
     AAVE_ORACLE,
     CONTRACT_DEPLOYER,
     DAI,
+    FEE_COLLECTOR,
     PROFIT_PERCENT,
+    REPAY_BUFFER,
     REPAY_PERCENT,
     SWAP_ROUTER,
+    TEST_CLIENT,
     USDC,
     WBTC,
     WETH,
@@ -45,6 +49,8 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
         uint256 postVDToken;
         uint256 preAToken;
         uint256 postAToken;
+        uint256 preDToken;
+        uint256 postDToken;
     }
 
     struct OwnerBalances {
@@ -56,6 +62,7 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
 
     // Test contracts
     PositionFactory public positionFactory;
+    FeeCollector public feeCollector;
     Assets public assets;
     TestPosition[] public positions;
 
@@ -79,6 +86,10 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
         // Deploy PositionFactory
         vm.prank(CONTRACT_DEPLOYER);
         positionFactory = new PositionFactory(CONTRACT_DEPLOYER);
+
+        // Deploy FeeCollector
+        vm.prank(CONTRACT_DEPLOYER);
+        feeCollector = new FeeCollector(CONTRACT_DEPLOYER);
 
         // Deploy and store all possible positions
         for (uint256 i; i < supportedAssets.length; i++) {
@@ -109,6 +120,10 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
                 abi.encode(assets.prices(supportedAssets[i]))
             );
         }
+
+        // Mock FeeCollector
+        bytes memory code = address(feeCollector).code;
+        vm.etch(FEE_COLLECTOR, code);
     }
 
     /// @dev
@@ -149,7 +164,7 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
 
             // Act
             vm.recordLogs();
-            IPosition(addr).short(_cAmt, _ltv, 0, 3000);
+            IPosition(addr).short(_cAmt, _ltv, 0, 3000, TEST_CLIENT);
             VmSafe.Log[] memory entries = vm.getRecordedLogs();
 
             // Post-act balances
@@ -199,7 +214,7 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
             // Act
             vm.prank(_sender);
             vm.expectRevert(PositionAdmin.Unauthorized.selector);
-            IPosition(addr).short(cAmt, ltv, 0, 3000);
+            IPosition(addr).short(cAmt, ltv, 0, 3000, TEST_CLIENT);
 
             // Revert to snapshot
             vm.revertTo(id);
@@ -212,7 +227,7 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
     // - Owner's cToken balance should increase by the amount of collateral withdrawn.
     // - Owner's bToken balance should increase by the position's gains amount.
     // - The above should be true for all supported tokens.
-    function test_CloseWithGains() public {
+    function test_CloseWithGainsExactOutput() public {
         // Setup
         ContractBalances memory contractBalances;
         OwnerBalances memory ownerBalances;
@@ -229,7 +244,7 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
             uint256 ltv = 50;
             _fund(owner, positions[i].cToken, cAmt);
             IERC20(positions[i].cToken).approve(addr, cAmt);
-            IPosition(addr).short(cAmt, ltv, 0, 3000);
+            IPosition(addr).short(cAmt, ltv, 0, 3000, TEST_CLIENT);
 
             // Get pre-act balances
             contractBalances.preBToken = IERC20(positions[i].bToken).balanceOf(addr);
@@ -290,11 +305,12 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
 
     /// @dev
     // - Position contract's bToken balance should go to 0.
-    // - Position contract's debt on Aave should decrease by the amount received from the swap.
+    // - Position contract's debt on Aave should go to 0.
+    // - Position contract's dToken balance should be the amount received from swap minus the amount repaid to Aave.
     // - Owner's cToken balance should increase by the amount of collateral withdrawn.
-    // - If bToken != cToken, the owner's bToken balance should not increase.
+    // - Owner's bToken balance should stay the same, as there are no gains.
     // - The above should be true for all supported tokens.
-    function test_CloseNoGains() public {
+    function testFuzz_CloseWithGainsExactInput(uint256 _dAmtRemainder) public {
         // Setup
         ContractBalances memory contractBalances;
         OwnerBalances memory ownerBalances;
@@ -311,7 +327,98 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
             uint256 ltv = 50;
             _fund(owner, positions[i].cToken, cAmt);
             IERC20(positions[i].cToken).approve(addr, cAmt);
-            IPosition(addr).short(cAmt, ltv, 0, 3000);
+            IPosition(addr).short(cAmt, ltv, 0, 3000, TEST_CLIENT);
+
+            // Get pre-act balances
+            contractBalances.preBToken = IERC20(positions[i].bToken).balanceOf(addr);
+            contractBalances.preVDToken = _getVariableDebtTokenBalance(addr, positions[i].dToken);
+            contractBalances.preAToken = _getATokenBalance(addr, positions[i].cToken);
+            contractBalances.preDToken = IERC20(positions[i].dToken).balanceOf(addr);
+            ownerBalances.preBToken = IERC20(positions[i].bToken).balanceOf(owner);
+            ownerBalances.preCToken = IERC20(positions[i].cToken).balanceOf(owner);
+
+            // Assertions
+            assertEq(ownerBalances.preBToken, 0);
+            assertEq(contractBalances.preDToken, 0);
+            assertNotEq(contractBalances.preBToken, 0);
+            assertNotEq(contractBalances.preVDToken, 0);
+
+            // Bound: upper bound is 150% of preVDToken
+            uint256 upperBound = contractBalances.preVDToken + (contractBalances.preVDToken * 50) / 100;
+            _dAmtRemainder = bound(_dAmtRemainder, 2, upperBound);
+
+            // Mock Uniswap to ensure position gains
+            uint256 amountOut = contractBalances.preVDToken + _dAmtRemainder;
+            _fund(SWAP_ROUTER, positions[i].dToken, contractBalances.preVDToken + _dAmtRemainder);
+            bytes memory code = address(new MockUniswapGains()).code;
+            vm.etch(SWAP_ROUTER, code);
+
+            // Act
+            /// @dev start event recorder
+            vm.recordLogs();
+            IPosition(addr).close(3000, false, 0, WITHDRAW_BUFFER);
+            VmSafe.Log[] memory entries = vm.getRecordedLogs();
+
+            // Get post-act balances
+            contractBalances.postBToken = IERC20(positions[i].bToken).balanceOf(addr);
+            contractBalances.postVDToken = _getVariableDebtTokenBalance(addr, positions[i].dToken);
+            contractBalances.postAToken = _getATokenBalance(addr, positions[i].cToken);
+            contractBalances.postDToken = IERC20(positions[i].dToken).balanceOf(addr);
+            ownerBalances.postBToken = IERC20(positions[i].bToken).balanceOf(owner);
+            ownerBalances.postCToken = IERC20(positions[i].cToken).balanceOf(owner);
+
+            bytes memory closeEvent = entries[entries.length - 1].data;
+            uint256 gains;
+
+            assembly {
+                gains := mload(add(closeEvent, 0x20))
+            }
+
+            // Assertions:
+            assertApproxEqAbs(contractBalances.postDToken, amountOut - contractBalances.preVDToken, 1);
+            assertEq(contractBalances.postBToken, 0);
+            assertEq(contractBalances.postVDToken, 0);
+            assertEq(contractBalances.postAToken, 0);
+            assertEq(gains, 0);
+
+            if (positions[i].bToken == positions[i].cToken) {
+                /// @dev In this case, bToken and cToken balances will increase by the same amount (ollateral withdrawn)
+                assertEq(ownerBalances.postBToken, ownerBalances.preBToken + contractBalances.preAToken);
+                assertEq(ownerBalances.postCToken, ownerBalances.postBToken);
+            } else {
+                assertEq(ownerBalances.postBToken, ownerBalances.preBToken);
+                assertEq(ownerBalances.postCToken, ownerBalances.preCToken + contractBalances.preAToken);
+            }
+
+            // Revert to snapshot
+            vm.revertTo(id);
+        }
+    }
+
+    /// @dev
+    // - Position contract's bToken balance should go to 0.
+    // - Position contract's debt on Aave should decrease by the amount received from the swap.
+    // - Owner's cToken balance should increase by the amount of collateral withdrawn.
+    // - If bToken != cToken, the owner's bToken balance should not increase.
+    // - The above should be true for all supported tokens.
+    function test_CloseNoGainsExactInput() public {
+        // Setup
+        ContractBalances memory contractBalances;
+        OwnerBalances memory ownerBalances;
+
+        // Take snapshot
+        uint256 id = vm.snapshot();
+
+        for (uint256 i; i < positions.length; i++) {
+            // Test variables
+            address addr = positions[i].addr;
+
+            // Setup: open short position
+            uint256 cAmt = assets.maxCAmts(positions[i].cToken);
+            uint256 ltv = 50;
+            _fund(owner, positions[i].cToken, cAmt);
+            IERC20(positions[i].cToken).approve(addr, cAmt);
+            IPosition(addr).short(cAmt, ltv, 0, 3000, TEST_CLIENT);
 
             // Get pre-act balances
             contractBalances.preBToken = IERC20(positions[i].bToken).balanceOf(addr);
@@ -362,6 +469,43 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
     }
 
     /// @dev
+    // - It should revert because the position contract doesn't have enough bTokens to facilitate the exact output swap.
+    function testFail_CloseNoGainsExactOutput() public {
+        // Setup
+        ContractBalances memory contractBalances;
+
+        // Take snapshot
+        uint256 id = vm.snapshot();
+
+        for (uint256 i; i < positions.length; i++) {
+            // Test variables
+            address addr = positions[i].addr;
+
+            // Setup: open short position
+            uint256 cAmt = assets.maxCAmts(positions[i].cToken);
+            uint256 ltv = 50;
+            _fund(owner, positions[i].cToken, cAmt);
+            IERC20(positions[i].cToken).approve(addr, cAmt);
+            IPosition(addr).short(cAmt, ltv, 0, 3000, TEST_CLIENT);
+
+            // Get pre-act balances
+            contractBalances.preVDToken = _getVariableDebtTokenBalance(addr, positions[i].dToken);
+
+            // Mock Uniswap to ensure position gains
+            uint256 repayAmt = contractBalances.preVDToken * REPAY_PERCENT / 100;
+            _fund(SWAP_ROUTER, positions[i].dToken, repayAmt);
+            bytes memory code = address(new MockUniswapLosses()).code;
+            vm.etch(SWAP_ROUTER, code);
+
+            // Act
+            IPosition(addr).close(3000, true, 0, WITHDRAW_BUFFER);
+
+            // Revert to snapshot
+            vm.revertTo(id);
+        }
+    }
+
+    /// @dev
     // - It should revert with Unauthorized() error when called by an unauthorized sender.
     function testFuzz_CannotClose(address _sender) public {
         // Setup
@@ -381,7 +525,7 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
             uint256 cAmt = assets.maxCAmts(positions[i].cToken);
             _fund(owner, positions[i].cToken, cAmt);
             IERC20(positions[i].cToken).approve(addr, cAmt);
-            IPosition(addr).short(cAmt, ltv, 0, 3000);
+            IPosition(addr).short(cAmt, ltv, 0, 3000, TEST_CLIENT);
 
             // Act
             vm.prank(_sender);

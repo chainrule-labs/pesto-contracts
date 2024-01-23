@@ -6,11 +6,16 @@ import { DebtService } from "src/services/DebtService.sol";
 import { SwapService } from "src/services/SwapService.sol";
 import { SafeTransferLib, ERC20 } from "solmate/utils/SafeTransferLib.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
+import { IFeeCollector } from "src/interfaces/IFeeCollector.sol";
 
 /// @title Position
 /// @author Chain Rule, LLC
 /// @notice Manages the owner's individual position
 contract Position is DebtService, SwapService {
+    // Constants: no SLOAD to save gas
+    uint256 public constant PROTOCOL_FEE = 3;
+    address private constant FEE_COLLECTOR = 0x2cD6D948263F20C3c27f181f14647840fC64b488;
+
     // Immutables: no SLOAD to save gas
     address public immutable B_TOKEN;
 
@@ -30,19 +35,30 @@ contract Position is DebtService, SwapService {
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
      * @param _poolFee The fee of the Uniswap pool.
+     * @param _client The address, controlled by client operators, for receiving protocol fees.
      */
-    function short(uint256 _cAmt, uint256 _ltv, uint256 _swapAmtOutMin, uint24 _poolFee) public payable onlyOwner {
+    function short(uint256 _cAmt, uint256 _ltv, uint256 _swapAmtOutMin, uint24 _poolFee, address _client)
+        public
+        payable
+        onlyOwner
+    {
         // 1. Transfer collateral to this contract
         SafeTransferLib.safeTransferFrom(ERC20(C_TOKEN), msg.sender, address(this), _cAmt);
 
-        // 2. Borrow debt token
-        uint256 dAmt = _borrow(_cAmt, _ltv);
+        // 2. Take protocol fee
+        uint256 protocolFee = (_cAmt * PROTOCOL_FEE) / 1000;
+        uint256 cAmtNet = _cAmt - protocolFee;
+        SafeTransferLib.safeApprove(ERC20(C_TOKEN), FEE_COLLECTOR, protocolFee);
+        IFeeCollector(FEE_COLLECTOR).collectFees(_client, C_TOKEN, protocolFee);
 
-        // 3. Swap debt token for base token
+        // 3. Borrow debt token
+        uint256 dAmt = _borrow(cAmtNet, _ltv);
+
+        // 4. Swap debt token for base token
         (, uint256 bAmt) = _swapExactInput(D_TOKEN, B_TOKEN, dAmt, _swapAmtOutMin, _poolFee);
 
-        // 4. Emit event
-        emit Short(_cAmt, dAmt, bAmt);
+        // 5. Emit event
+        emit Short(cAmtNet, dAmt, bAmt);
     }
 
     /**
@@ -62,8 +78,9 @@ contract Position is DebtService, SwapService {
         // 1. Swap base token for debt token
         uint256 bAmtIn;
         uint256 dAmtOut;
+        uint256 debtAmt = _getDebtAmt();
         if (_exactOutput) {
-            (bAmtIn, dAmtOut) = _swapExactOutput(B_TOKEN, D_TOKEN, _getDebtAmt(), bTokenBalance, _poolFee);
+            (bAmtIn, dAmtOut) = _swapExactOutput(B_TOKEN, D_TOKEN, debtAmt, bTokenBalance, _poolFee);
         } else {
             (bAmtIn, dAmtOut) = _swapExactInput(B_TOKEN, D_TOKEN, bTokenBalance, _swapAmtOutMin, _poolFee);
         }
