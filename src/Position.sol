@@ -35,7 +35,7 @@ contract Position is DebtService, SwapService {
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
      * @param _poolFee The fee of the Uniswap pool.
-     * @param _client The address, controlled by client operators, for receiving protocol fees.
+     * @param _client The address, controlled by client operators, for receiving protocol fees (use address(0) if no client).
      */
     function short(uint256 _cAmt, uint256 _ltv, uint256 _swapAmtOutMin, uint24 _poolFee, address _client)
         public
@@ -78,9 +78,8 @@ contract Position is DebtService, SwapService {
         // 1. Swap base token for debt token
         uint256 bAmtIn;
         uint256 dAmtOut;
-        uint256 debtAmt = _getDebtAmt();
         if (_exactOutput) {
-            (bAmtIn, dAmtOut) = _swapExactOutput(B_TOKEN, D_TOKEN, debtAmt, bTokenBalance, _poolFee);
+            (bAmtIn, dAmtOut) = _swapExactOutput(B_TOKEN, D_TOKEN, _getDebtAmt(), bTokenBalance, _poolFee);
         } else {
             (bAmtIn, dAmtOut) = _swapExactInput(B_TOKEN, D_TOKEN, bTokenBalance, _swapAmtOutMin, _poolFee);
         }

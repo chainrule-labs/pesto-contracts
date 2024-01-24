@@ -49,13 +49,14 @@ contract FeeCollector is Ownable {
      * @param _token The token address to withdraw.
      */
     function clientWithdraw(address _token) public payable {
-        // 1. Transfer tokens to msg.sender
         uint256 withdrawAmt = balances[msg.sender][_token];
-        SafeTransferLib.safeTransfer(ERC20(_token), msg.sender, withdrawAmt);
 
-        // 2. Update accounting
+        // 1. Update accounting
         balances[msg.sender][_token] -= withdrawAmt;
         totalClientBalances[_token] -= withdrawAmt;
+
+        // 2. Transfer tokens to msg.sender
+        SafeTransferLib.safeTransfer(ERC20(_token), msg.sender, withdrawAmt);
     }
 
     /**

@@ -382,7 +382,7 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
             assertEq(gains, 0);
 
             if (positions[i].bToken == positions[i].cToken) {
-                /// @dev In this case, bToken and cToken balances will increase by the same amount (ollateral withdrawn)
+                /// @dev In this case, bToken and cToken balances will increase by the same amount (collateral withdrawn)
                 assertEq(ownerBalances.postBToken, ownerBalances.preBToken + contractBalances.preAToken);
                 assertEq(ownerBalances.postCToken, ownerBalances.postBToken);
             } else {
