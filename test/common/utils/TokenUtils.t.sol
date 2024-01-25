@@ -3,7 +3,9 @@ pragma solidity ^0.8.21;
 
 // External Imports
 import { Test } from "forge-std/Test.sol";
-import { Assets, DAI, USDC, USDC_HOLDER } from "test/common/Constants.t.sol";
+
+// Local Imports
+import { Assets, USDC, USDC_HOLDER } from "test/common/Constants.t.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
 contract TokenUtils is Test {

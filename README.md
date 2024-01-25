@@ -14,28 +14,28 @@ On-chain shorting via Aave and Uniswap.
 
 ## To-Do
 
--   [x] Impelemnt protocol fee
--   [x] Implement frontend incentive
--   [x] Account for case where there is no client (if no frontend, they would be able to pass their own address...)
--   [x] Should not repay more to Aave than what is owed when closing a position
+Logic:
 
-Unit Tests:
+-   [x] Make `FEE_COLLECTOR` an immutable variable in Position.sol and PositionFactory.sol
+-   [x] Add `owner()` and `clientRate()` to IFeeCollector
 
--   [x] Mock feel collector in tests
--   [x] Should not repay more to Aave than what is owed when closing a position
--   [ ] Test that the client's collected fee balance increased by the correct amount
--   [ ] Test that the totalClientBalance increased by the correct amount
--   [ ] Test that an admin you can set a clientRate
--   [ ] Test that a non-admin cannot set a clientRate
--   [ ] Test that a client can withdraw their collected fees
--   [ ] Test that extractERC20 works correctly on FeeCollector (it has different logic than the other contracts)
--   [ ] Test that a non-admin cannot extractERC20
--   [ ] Test that an admin can withdraw native
--   [ ] Test that a non-admin cannot withdraw native
--   [ ] Test that FeeCollector can recieve native
--   [ ] Test Fallback on FeeCollector
--   [ ] Test that the correct protocol fee is collected during a short (proabably separate test from Position.t.sol)
+Tests:
+
+-   [ ] Separate integration tests from unit tests
+-   [ ] collectFees unit tests
+-   [x] testFuzz_CollectFeesWithClient (integrated with short)
+-   [x] testFuzz_CollectFeesNoClient (integrated wiht short)
+-   [x] testFuzz_ClientWithdraw
+-   [x] testFuzz_SetClientRate
+-   [x] testFuzz_CannotSetClientRateOutOfRange
+-   [x] testFuzz_CannotSetClientRateUnauthorized
+-   [x] testFuzz_ExtractNative
+-   [x] testFuzz_CannotExtractNative
+-   [x] testFuzz_ExtractERC20
+-   [x] testFuzz_CannotExtractERC20
+-   [x] testFuzz_Receive
+-   [x] testFuzz_Fallback
 
 Considerations:
 
--   [ ] Consider emitting events through position factory
+-   [ ] Consider emitting Position events through another contract

@@ -6,23 +6,19 @@ import { Test } from "forge-std/Test.sol";
 import { VmSafe } from "forge-std/Vm.sol";
 
 // Local Imports
+import { FeeCollector } from "src/FeeCollector.sol";
 import { PositionFactory } from "src/PositionFactory.sol";
 import { PositionAdmin } from "src/PositionAdmin.sol";
-import { FeeCollector } from "src/FeeCollector.sol";
 import {
     Assets,
     AAVE_ORACLE,
     CONTRACT_DEPLOYER,
     DAI,
-    FEE_COLLECTOR,
     PROFIT_PERCENT,
-    REPAY_BUFFER,
     REPAY_PERCENT,
     SWAP_ROUTER,
     TEST_CLIENT,
     USDC,
-    WBTC,
-    WETH,
     WITHDRAW_BUFFER
 } from "test/common/Constants.t.sol";
 import { TokenUtils } from "test/common/utils/TokenUtils.t.sol";
@@ -68,6 +64,7 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
 
     // Test Storage
     address public positionAddr;
+    address public feeCollectorAddr;
     uint256 public mainnetFork;
     address public owner = address(this);
 
@@ -83,13 +80,14 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
         assets = new Assets();
         address[4] memory supportedAssets = assets.getSupported();
 
-        // Deploy PositionFactory
-        vm.prank(CONTRACT_DEPLOYER);
-        positionFactory = new PositionFactory(CONTRACT_DEPLOYER);
-
         // Deploy FeeCollector
         vm.prank(CONTRACT_DEPLOYER);
         feeCollector = new FeeCollector(CONTRACT_DEPLOYER);
+        feeCollectorAddr = address(feeCollector);
+
+        // Deploy PositionFactory
+        vm.prank(CONTRACT_DEPLOYER);
+        positionFactory = new PositionFactory(CONTRACT_DEPLOYER, feeCollectorAddr);
 
         // Deploy and store all possible positions
         for (uint256 i; i < supportedAssets.length; i++) {
@@ -120,10 +118,6 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
                 abi.encode(assets.prices(supportedAssets[i]))
             );
         }
-
-        // Mock FeeCollector
-        bytes memory code = address(feeCollector).code;
-        vm.etch(FEE_COLLECTOR, code);
     }
 
     /// @dev
