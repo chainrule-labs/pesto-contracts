@@ -9,6 +9,16 @@ interface IFeeCollector {
     **
     ******************************************************************************/
     /**
+     * @notice Returns the owner of this contract.
+     */
+    function owner() external returns (address);
+
+    /**
+     * @notice Returns the current client rate.
+     */
+    function clientRate() external returns (uint256);
+
+    /**
      * @notice Returns the total balance for the specified token across all client operators.
      * @param _token The token address to check.
      * @return balance The total balance for the specified token across all client operators.
