@@ -21,10 +21,11 @@ Logic:
 
 Tests:
 
--   [ ] Separate integration tests from unit tests
--   [ ] collectFees unit tests
--   [x] testFuzz_CollectFeesWithClient (integrated with short)
--   [x] testFuzz_CollectFeesNoClient (integrated wiht short)
+-   [ ] Separate integration tests from unit tests (separate PR)
+-   [x] testFuzz_CollectFeesWithClient
+-   [x] testFuzz_CollectFeesNoClient
+-   [x] testFuzz_CollectFeesWithClientIntegrated
+-   [x] testFuzz_CollectFeesNoClientIntegrated
 -   [x] testFuzz_ClientWithdraw
 -   [x] testFuzz_SetClientRate
 -   [x] testFuzz_CannotSetClientRateOutOfRange
