@@ -18,13 +18,10 @@ The following outlines principles for core protocol funcitonality.
 
 Logic:
 
--   [x] Add ERC712 permits to functions that use transferFrom
+-   All caught up!🙂
 
 Tests:
 
--   [ ] Unit test shortWithPermit()
--   [ ] Unit test addCollateralWithPermit()
--   [ ] Unit test repayAfterCloseWithPermit()
 -   [ ] Separate integration tests from unit tests (separate PR)
 
 Considerations:
