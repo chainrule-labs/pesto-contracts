@@ -205,7 +205,7 @@ contract FeeCollectorTest is Test, TokenUtils {
             // Pre-act balances
             uint256 preContractBalance = IERC20(cToken).balanceOf(feeCollectorAddr);
             uint256 preTotalClientBalances = feeCollector.totalClientBalances(cToken);
-            uint256 preClientCTokenFeeBalance = feeCollector.balances(TEST_CLIENT, cToken);
+            uint256 preClientFeeBalance = feeCollector.balances(TEST_CLIENT, cToken);
 
             // Act: increase short position
             IPosition(positionAddr).short(_cAmt, 50, 0, 3000, TEST_CLIENT);
@@ -213,12 +213,12 @@ contract FeeCollectorTest is Test, TokenUtils {
             // Post-act balances
             uint256 postContractBalance = IERC20(cToken).balanceOf(feeCollectorAddr);
             uint256 postTotalClientBalances = feeCollector.totalClientBalances(cToken);
-            uint256 postClientCTokenFeeBalance = feeCollector.balances(TEST_CLIENT, cToken);
+            uint256 postClientFeeBalance = feeCollector.balances(TEST_CLIENT, cToken);
 
             // Assertions
             assertEq(postContractBalance, preContractBalance + protocolFee);
             assertEq(postTotalClientBalances, preTotalClientBalances + clientFee);
-            assertEq(postClientCTokenFeeBalance, preClientCTokenFeeBalance + clientFee);
+            assertEq(postClientFeeBalance, preClientFeeBalance + clientFee);
         }
     }
 
