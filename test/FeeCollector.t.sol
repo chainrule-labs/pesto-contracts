@@ -33,24 +33,6 @@ contract FeeCollectorTest is Test, TokenUtils {
         address bToken;
     }
 
-    struct ContractBalances {
-        uint256 preBToken;
-        uint256 postBToken;
-        uint256 preVDToken;
-        uint256 postVDToken;
-        uint256 preAToken;
-        uint256 postAToken;
-        uint256 preDToken;
-        uint256 postDToken;
-    }
-
-    struct OwnerBalances {
-        uint256 preBToken;
-        uint256 postBToken;
-        uint256 preCToken;
-        uint256 postCToken;
-    }
-
     // Errors
     error OwnableUnauthorizedAccount(address account);
 
@@ -122,77 +104,77 @@ contract FeeCollectorTest is Test, TokenUtils {
     }
 
     /// @dev
-    // - The FeeCollector's token balance should increase by _amount
-    // - The token totalClientBalances should increase by clientFee
-    // - The client's token balance on the FeeCollector contract should increase by clientFee
-    function testFuzz_CollectFeesWithClient(uint256 _amount) external payable {
+    // - The FeeCollector's feeToken balance should increase by _protocolFee
+    // - The feeToken totalClientBalances should increase by clientFee
+    // - The client's feeToken balance on the FeeCollector contract should increase by clientFee
+    function testFuzz_CollectFeesWithClient(uint256 _protocolFee) external payable {
         for (uint256 i; i < positions.length; i++) {
             // Test Variables
-            address token = positions[i].cToken;
+            address feeToken = positions[i].cToken;
 
             // Bound fuzzed variables
-            _amount = bound(_amount, assets.minCAmts(token), assets.maxCAmts(token));
+            _protocolFee = bound(_protocolFee, assets.minCAmts(feeToken), assets.maxCAmts(feeToken));
 
             // Expectations
-            uint256 clientFee = (_amount * CLIENT_RATE) / 100;
+            uint256 clientFee = (_protocolFee * CLIENT_RATE) / 100;
 
-            // Fund positionOwner with _amount of token
-            _fund(positionOwner, token, _amount);
+            // Fund positionOwner with _protocolFee amount of feeToken
+            _fund(positionOwner, feeToken, _protocolFee);
 
-            // Approve FeeCollector contract to spend token
-            IERC20(token).approve(feeCollectorAddr, _amount);
+            // Approve FeeCollector contract to spend feeToken
+            IERC20(feeToken).approve(feeCollectorAddr, _protocolFee);
 
             // Pre-act balances
-            uint256 preContractBalance = IERC20(token).balanceOf(feeCollectorAddr);
-            uint256 preTotalClientBalances = feeCollector.totalClientBalances(token);
-            uint256 preClientFeeBalance = feeCollector.balances(TEST_CLIENT, token);
+            uint256 preContractBalance = IERC20(feeToken).balanceOf(feeCollectorAddr);
+            uint256 preTotalClientBalances = feeCollector.totalClientBalances(feeToken);
+            uint256 preClientFeeBalance = feeCollector.balances(TEST_CLIENT, feeToken);
 
             // Act: collect fees
-            feeCollector.collectFees(TEST_CLIENT, token, _amount);
+            feeCollector.collectFees(TEST_CLIENT, feeToken, _protocolFee);
 
             // Post-act balances
-            uint256 postContractBalance = IERC20(token).balanceOf(feeCollectorAddr);
-            uint256 postTotalClientBalances = feeCollector.totalClientBalances(token);
-            uint256 postClientFeeBalance = feeCollector.balances(TEST_CLIENT, token);
+            uint256 postContractBalance = IERC20(feeToken).balanceOf(feeCollectorAddr);
+            uint256 postTotalClientBalances = feeCollector.totalClientBalances(feeToken);
+            uint256 postClientFeeBalance = feeCollector.balances(TEST_CLIENT, feeToken);
 
             // Assertions
-            assertEq(postContractBalance, preContractBalance + _amount);
+            assertEq(postContractBalance, preContractBalance + _protocolFee);
             assertEq(postTotalClientBalances, preTotalClientBalances + clientFee);
             assertEq(postClientFeeBalance, preClientFeeBalance + clientFee);
         }
     }
 
     /// @dev
-    // - The FeeCollector's token balance should increase by _amount
-    // - The token totalClientBalances should not change
+    // - The FeeCollector's feeToken balance should increase by _protocolFee
+    // - The feeToken totalClientBalances should not change
     // - The above should be true when _client is sent as address(0)
-    function testFuzz_CollectFeesNoClient(uint256 _amount) external payable {
+    function testFuzz_CollectFeesNoClient(uint256 _protocolFee) external payable {
         for (uint256 i; i < positions.length; i++) {
             // Test Variables
-            address token = positions[i].cToken;
+            address feeToken = positions[i].cToken;
 
             // Bound fuzzed variables
-            _amount = bound(_amount, assets.minCAmts(token), assets.maxCAmts(token));
+            _protocolFee = bound(_protocolFee, assets.minCAmts(feeToken), assets.maxCAmts(feeToken));
 
-            // Fund positionOwner with _amount of token
-            _fund(positionOwner, token, _amount);
+            // Fund positionOwner with _protocolFee amount of feeToken
+            _fund(positionOwner, feeToken, _protocolFee);
 
-            // Approve FeeCollector contract to spend token
-            IERC20(token).approve(feeCollectorAddr, _amount);
+            // Approve FeeCollector contract to spend feeToken
+            IERC20(feeToken).approve(feeCollectorAddr, _protocolFee);
 
             // Pre-act balances
-            uint256 preContractBalance = IERC20(token).balanceOf(feeCollectorAddr);
-            uint256 preTotalClientBalances = feeCollector.totalClientBalances(token);
+            uint256 preContractBalance = IERC20(feeToken).balanceOf(feeCollectorAddr);
+            uint256 preTotalClientBalances = feeCollector.totalClientBalances(feeToken);
 
             // Act: collect fees
-            feeCollector.collectFees(address(0), token, _amount);
+            feeCollector.collectFees(address(0), feeToken, _protocolFee);
 
             // Post-act balances
-            uint256 postContractBalance = IERC20(token).balanceOf(feeCollectorAddr);
-            uint256 postTotalClientBalances = feeCollector.totalClientBalances(token);
+            uint256 postContractBalance = IERC20(feeToken).balanceOf(feeCollectorAddr);
+            uint256 postTotalClientBalances = feeCollector.totalClientBalances(feeToken);
 
             // Assertions
-            assertEq(postContractBalance, preContractBalance + _amount);
+            assertEq(postContractBalance, preContractBalance + _protocolFee);
             assertEq(postTotalClientBalances, preTotalClientBalances);
         }
     }
@@ -201,14 +183,13 @@ contract FeeCollectorTest is Test, TokenUtils {
     // - The FeeCollector's cToken balance should increase by protocolFee
     // - The cToken totalClientBalances should increase by clientFee
     // - The client's cToken balance on the FeeCollector contract should increase by clientFee
-    function testFuzz_CollectFeesWithClientIntegrated(uint256 _ltv, uint256 _cAmt) external payable {
+    function testFuzz_CollectFeesWithClientIntegrated(uint256 _cAmt) external payable {
         for (uint256 i; i < positions.length; i++) {
             // Test Variables
             address positionAddr = positions[i].addr;
             address cToken = positions[i].cToken;
 
             // Bound fuzzed variables
-            _ltv = bound(_ltv, 1, 60);
             _cAmt = bound(_cAmt, assets.minCAmts(cToken), assets.maxCAmts(cToken));
 
             // Expectations
@@ -222,20 +203,20 @@ contract FeeCollectorTest is Test, TokenUtils {
             IERC20(cToken).approve(positionAddr, _cAmt);
 
             // Pre-act balances
-            uint256 preContractCTokenBalance = IERC20(cToken).balanceOf(feeCollectorAddr);
+            uint256 preContractBalance = IERC20(cToken).balanceOf(feeCollectorAddr);
             uint256 preTotalClientBalances = feeCollector.totalClientBalances(cToken);
             uint256 preClientCTokenFeeBalance = feeCollector.balances(TEST_CLIENT, cToken);
 
             // Act: increase short position
-            IPosition(positionAddr).short(_cAmt, _ltv, 0, 3000, TEST_CLIENT);
+            IPosition(positionAddr).short(_cAmt, 50, 0, 3000, TEST_CLIENT);
 
             // Post-act balances
-            uint256 postContractCTokenBalance = IERC20(cToken).balanceOf(feeCollectorAddr);
+            uint256 postContractBalance = IERC20(cToken).balanceOf(feeCollectorAddr);
             uint256 postTotalClientBalances = feeCollector.totalClientBalances(cToken);
             uint256 postClientCTokenFeeBalance = feeCollector.balances(TEST_CLIENT, cToken);
 
             // Assertions
-            assertEq(postContractCTokenBalance, preContractCTokenBalance + protocolFee);
+            assertEq(postContractBalance, preContractBalance + protocolFee);
             assertEq(postTotalClientBalances, preTotalClientBalances + clientFee);
             assertEq(postClientCTokenFeeBalance, preClientCTokenFeeBalance + clientFee);
         }
@@ -245,14 +226,13 @@ contract FeeCollectorTest is Test, TokenUtils {
     // - The FeeCollector's cToken balance should increase by protocolFee
     // - The cToken totalClientBalances should not change
     // - The above should be true when _client is sent as address(0)
-    function testFuzz_CollectFeesNoClientIntegrated(uint256 _ltv, uint256 _cAmt) external payable {
+    function testFuzz_CollectFeesNoClientIntegrated(uint256 _cAmt) external payable {
         for (uint256 i; i < positions.length; i++) {
             // Test Variables
             address positionAddr = positions[i].addr;
             address cToken = positions[i].cToken;
 
             // Bound fuzzed variables
-            _ltv = bound(_ltv, 1, 60);
             _cAmt = bound(_cAmt, assets.minCAmts(cToken), assets.maxCAmts(cToken));
 
             // Expectations
@@ -265,65 +245,65 @@ contract FeeCollectorTest is Test, TokenUtils {
             IERC20(cToken).approve(positionAddr, _cAmt);
 
             // Pre-act balances
-            uint256 preContractCTokenBalance = IERC20(cToken).balanceOf(feeCollectorAddr);
+            uint256 preContractBalance = IERC20(cToken).balanceOf(feeCollectorAddr);
             uint256 preTotalClientBalances = feeCollector.totalClientBalances(cToken);
 
             // Act: increase short position
-            IPosition(positionAddr).short(_cAmt, _ltv, 0, 3000, address(0));
+            IPosition(positionAddr).short(_cAmt, 50, 0, 3000, address(0));
 
             // Post-act balances
-            uint256 postContractCTokenBalance = IERC20(cToken).balanceOf(feeCollectorAddr);
+            uint256 postContractBalance = IERC20(cToken).balanceOf(feeCollectorAddr);
             uint256 postTotalClientBalances = feeCollector.totalClientBalances(cToken);
 
             // Assertions
-            assertEq(postContractCTokenBalance, preContractCTokenBalance + protocolFee);
+            assertEq(postContractBalance, preContractBalance + protocolFee);
             assertEq(postTotalClientBalances, preTotalClientBalances);
         }
     }
 
     /// @dev
-    // - The FeeCollector's token balance should decrease by amount withdrawn
-    // - The token totalClientBalances should decrease by amount withdrawn
-    // - The client's token balance on the FeeCollector contract should decrease by amount withdrawn
-    // - The token balance of client's account should increase by amount withdrawn
+    // - The FeeCollector's feeToken balance should decrease by amount withdrawn
+    // - The feeToken totalClientBalances should decrease by amount withdrawn
+    // - The client's feeToken balance on the FeeCollector contract should decrease by amount withdrawn
+    // - The feeToken balance of client's account should increase by amount withdrawn
     function testFuzz_ClientWithdraw(uint256 _amount) external payable {
         for (uint256 i; i < positions.length; i++) {
             // Test Variables
-            address token = positions[i].cToken;
+            address feeToken = positions[i].cToken;
 
             // Bound fuzzed variables
-            _amount = bound(_amount, assets.minCAmts(token), assets.maxCAmts(token));
+            _amount = bound(_amount, assets.minCAmts(feeToken), assets.maxCAmts(feeToken));
 
-            // Fund positionOwner with _amount of token
-            _fund(positionOwner, token, _amount);
+            // Fund positionOwner with _amount of feeToken
+            _fund(positionOwner, feeToken, _amount);
 
-            // Approve FeeCollector contract to spend token
-            IERC20(token).approve(feeCollectorAddr, _amount);
+            // Approve FeeCollector contract to spend feeToken
+            IERC20(feeToken).approve(feeCollectorAddr, _amount);
 
             // Collect fees
-            feeCollector.collectFees(TEST_CLIENT, token, _amount);
+            feeCollector.collectFees(TEST_CLIENT, feeToken, _amount);
 
             // Pre-act balances
-            uint256 preContractCTokenBalance = IERC20(token).balanceOf(feeCollectorAddr);
-            uint256 preTotalClientBalances = feeCollector.totalClientBalances(token);
-            uint256 preClientCTokenFeeBalanceAcc = IERC20(token).balanceOf(TEST_CLIENT);
-            uint256 withrawAmt = feeCollector.balances(TEST_CLIENT, token);
+            uint256 preContractBalance = IERC20(feeToken).balanceOf(feeCollectorAddr);
+            uint256 preTotalClientBalances = feeCollector.totalClientBalances(feeToken);
+            uint256 preClientContractBalance = feeCollector.balances(TEST_CLIENT, feeToken);
+            uint256 preClientAccountBalance = IERC20(feeToken).balanceOf(TEST_CLIENT);
 
             // Act: client withdraws fees
             vm.prank(TEST_CLIENT);
-            feeCollector.clientWithdraw(token);
+            feeCollector.clientWithdraw(feeToken);
 
             // Post-act balances
-            uint256 postContractCTokenBalance = IERC20(token).balanceOf(feeCollectorAddr);
-            uint256 postTotalClientBalances = feeCollector.totalClientBalances(token);
-            uint256 postClientCTokenFeeBalanceContr = feeCollector.balances(TEST_CLIENT, token);
-            uint256 postClientCTokenFeeBalanceAcc = IERC20(token).balanceOf(TEST_CLIENT);
+            uint256 postContractBalance = IERC20(feeToken).balanceOf(feeCollectorAddr);
+            uint256 postTotalClientBalances = feeCollector.totalClientBalances(feeToken);
+            uint256 postClientContractBalance = feeCollector.balances(TEST_CLIENT, feeToken);
+            uint256 postClientAccountBalance = IERC20(feeToken).balanceOf(TEST_CLIENT);
 
             // Assertions
-            assertEq(postContractCTokenBalance, preContractCTokenBalance - withrawAmt);
-            assertEq(postTotalClientBalances, preTotalClientBalances - withrawAmt);
-            assertEq(postClientCTokenFeeBalanceContr, 0);
-            assertEq(postClientCTokenFeeBalanceAcc, preClientCTokenFeeBalanceAcc + withrawAmt);
+            assertEq(postContractBalance, preContractBalance - preClientContractBalance);
+            assertEq(postTotalClientBalances, preTotalClientBalances - preClientContractBalance);
+            assertEq(postClientContractBalance, 0);
+            assertEq(postClientAccountBalance, preClientAccountBalance + preClientContractBalance);
         }
     }
 
@@ -418,8 +398,8 @@ contract FeeCollectorTest is Test, TokenUtils {
     }
 
     /// @dev
-    // - The FeeCollector's token balance should decrease by its total balance - totalClientBalances
-    // - The owner's token balance should increase by the amount transferred.
+    // - For the specified feeToken, the owner's balance should increase by (total balance - totalClientBalances).
+    // - For the specified feeToken, the FeeCollector's balance should decrease by (total balance - totalClientBalances).
     // - The token totalClientBalances should not change
     function testFuzz_ExtractERC20(uint256 _amount) public {
         for (uint256 i; i < positions.length; i++) {

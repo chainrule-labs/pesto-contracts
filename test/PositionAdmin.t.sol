@@ -23,7 +23,6 @@ contract PositionAdminTest is Test, TokenUtils {
 
     // Test Storage
     address public positionAddr;
-    address public feeCollectorAddr;
     uint256 public mainnetFork;
     address public owner = address(this);
 
@@ -39,11 +38,10 @@ contract PositionAdminTest is Test, TokenUtils {
         // Deploy FeeCollector
         vm.prank(CONTRACT_DEPLOYER);
         feeCollector = new FeeCollector(CONTRACT_DEPLOYER);
-        feeCollectorAddr = address(feeCollector);
 
         // Deploy PositionFactory
         vm.prank(CONTRACT_DEPLOYER);
-        positionFactory = new PositionFactory(CONTRACT_DEPLOYER, feeCollectorAddr);
+        positionFactory = new PositionFactory(CONTRACT_DEPLOYER, address(feeCollector));
 
         // Deploy a Position
         positionAddr = positionFactory.createPosition(supportedAssets[0], supportedAssets[3], supportedAssets[2]);

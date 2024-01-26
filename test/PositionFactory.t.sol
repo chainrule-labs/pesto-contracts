@@ -22,7 +22,6 @@ contract PositionFactoryTest is Test, TokenUtils {
 
     // Test Storage
     uint256 public mainnetFork;
-    address public feeCollectorAddr;
     address public positionOwner = address(this);
 
     // Errors
@@ -36,10 +35,9 @@ contract PositionFactoryTest is Test, TokenUtils {
         // Deploy FeeCollector
         vm.prank(CONTRACT_DEPLOYER);
         feeCollector = new FeeCollector(CONTRACT_DEPLOYER);
-        feeCollectorAddr = address(feeCollector);
 
         vm.prank(CONTRACT_DEPLOYER);
-        positionFactory = new PositionFactory(CONTRACT_DEPLOYER, feeCollectorAddr);
+        positionFactory = new PositionFactory(CONTRACT_DEPLOYER, address(feeCollector));
         assets = new Assets();
     }
 

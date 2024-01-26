@@ -40,3 +40,4 @@ Tests:
 Considerations:
 
 -   [ ] Consider emitting Position events through another contract
+-   [ ] Consider adding a function to short with signatures, via `ERCRecover`.
