@@ -5,6 +5,7 @@ pragma solidity ^0.8.21;
 import { Test } from "forge-std/Test.sol";
 
 // Local Imports
+import { FeeCollector } from "src/FeeCollector.sol";
 import { PositionFactory } from "src/PositionFactory.sol";
 import { PositionAdmin } from "src/PositionAdmin.sol";
 import { Assets, CONTRACT_DEPLOYER } from "test/common/Constants.t.sol";
@@ -16,6 +17,7 @@ contract PositionAdminTest is Test, TokenUtils {
     /* solhint-disable func-name-mixedcase */
 
     // Test contracts
+    FeeCollector public feeCollector;
     PositionFactory public positionFactory;
     Assets public assets;
 
@@ -33,11 +35,15 @@ contract PositionAdminTest is Test, TokenUtils {
         assets = new Assets();
         address[4] memory supportedAssets = assets.getSupported();
 
+        // Deploy FeeCollector
+        vm.prank(CONTRACT_DEPLOYER);
+        feeCollector = new FeeCollector(CONTRACT_DEPLOYER);
+
         // Deploy PositionFactory
         vm.prank(CONTRACT_DEPLOYER);
-        positionFactory = new PositionFactory(CONTRACT_DEPLOYER);
+        positionFactory = new PositionFactory(CONTRACT_DEPLOYER, address(feeCollector));
 
-        // Deploy Position
+        // Deploy a Position
         positionAddr = positionFactory.createPosition(supportedAssets[0], supportedAssets[3], supportedAssets[2]);
     }
 

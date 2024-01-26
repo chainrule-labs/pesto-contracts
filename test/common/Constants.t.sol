@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
+// Address constants
 address constant CONTRACT_DEPLOYER = 0x0a5B347509621337cDDf44CBCf6B6E7C9C908CD2;
 address constant AAVE_ORACLE = 0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7;
 address constant AAVE_POOL = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
 address constant SWAP_ROUTER = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
-address constant FEE_COLLECTOR = 0x2cD6D948263F20C3c27f181f14647840fC64b488;
 address constant TEST_CLIENT = 0xd05E2C879821C31E5a8e3B5Da490e834211Ca443;
 
 // Supported Assets
@@ -22,6 +22,8 @@ uint256 constant PROFIT_PERCENT = 25;
 uint256 constant REPAY_PERCENT = 75;
 uint256 constant WITHDRAW_BUFFER = 100_000;
 uint256 constant REPAY_BUFFER = 2;
+uint256 constant PROTOCOL_FEE = 3;
+uint256 constant CLIENT_RATE = 30;
 
 contract Assets {
     address[4] public supported = [USDC, DAI, WETH, WBTC];
