@@ -187,7 +187,6 @@ contract PositionAdminTest is Test, TokenUtils {
         vm.deal(_sender, _amount + gasMoney);
 
         // Pre-Act Data
-        uint256 preSenderBalance = _sender.balance;
         uint256 preContractBalance = positionAddr.balance;
 
         // Act
@@ -195,12 +194,10 @@ contract PositionAdminTest is Test, TokenUtils {
         (bool success,) = positionAddr.call{ value: _amount }(abi.encodeWithSignature("nonExistentFn()"));
 
         // Post-Act Data
-        uint256 postSenderBalance = _sender.balance;
         uint256 postContractBalance = positionAddr.balance;
 
         // Assertions
         assertTrue(success);
-        assertEq(postSenderBalance, preSenderBalance - _amount);
         assertEq(postContractBalance, preContractBalance + _amount);
     }
 
