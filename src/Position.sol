@@ -6,6 +6,7 @@ import { DebtService } from "src/services/DebtService.sol";
 import { SwapService } from "src/services/SwapService.sol";
 import { SafeTransferLib, ERC20 } from "solmate/utils/SafeTransferLib.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
+import { IERC20Permit } from "src/interfaces/token/IERC20Permit.sol";
 import { IFeeCollector } from "src/interfaces/IFeeCollector.sol";
 
 /// @title Position
@@ -60,6 +61,36 @@ contract Position is DebtService, SwapService {
 
         // 5. Emit event
         emit Short(cAmtNet, dAmt, bAmt);
+    }
+
+    /**
+     * @notice Adds to this contract's short position with permit, obviating the need for a separate approve tx.
+     * @param _cAmt The amount of collateral to be supplied for this transaction-specific loan (units: C_DECIMALS).
+     * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
+     * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
+     * @param _poolFee The fee of the Uniswap pool.
+     * @param _client The address, controlled by client operators, for receiving protocol fees (use address(0) if no client).
+     * @param _deadline The deadline timestamp that the permit is valid.
+     * @param _v The V parameter of ERC712 permit signature.
+     * @param _r The R parameter of ERC712 permit signature.
+     * @param _s The S parameter of ERC712 permit signature.
+     */
+    function shortWithPermit(
+        uint256 _cAmt,
+        uint256 _ltv,
+        uint256 _swapAmtOutMin,
+        uint24 _poolFee,
+        address _client,
+        uint256 _deadline,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) public payable onlyOwner {
+        // 1. Approve with permit
+        IERC20Permit(C_TOKEN).permit(msg.sender, address(this), _cAmt, _deadline, _v, _r, _s);
+
+        // 2. Short
+        short(_cAmt, _ltv, _swapAmtOutMin, _poolFee, _client);
     }
 
     /**

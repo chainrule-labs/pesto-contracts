@@ -3,6 +3,7 @@ pragma solidity ^0.8.21;
 
 // External Imports
 import { Test } from "forge-std/Test.sol";
+import { VmSafe } from "forge-std/Vm.sol";
 
 // Local Imports
 import { PositionAdmin } from "src/PositionAdmin.sol";
@@ -429,6 +430,189 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             vm.prank(_sender);
             vm.expectRevert(PositionAdmin.Unauthorized.selector);
             debtServices[i].repayAfterClose(_payment, WITHDRAW_BUFFER);
+        }
+    }
+}
+
+contract DebtServicePermitTest is Test, DebtUtils, TokenUtils {
+    /* solhint-disable func-name-mixedcase */
+
+    // Test Contracts
+    Assets public assets;
+
+    // Test Storage
+    DebtServiceHarness[] public debtServices;
+    VmSafe.Wallet public wallet;
+    address[4] public supportedAssets;
+    uint256 public mainnetFork;
+    address public owner;
+
+    function setUp() public {
+        // Setup: use mainnet fork
+        mainnetFork = vm.createFork(vm.envString("RPC_URL"));
+        vm.selectFork(mainnetFork);
+
+        // Deploy Assets contract
+        assets = new Assets();
+        supportedAssets = assets.getSupported();
+
+        // Set contract owner
+        wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(1)))));
+        owner = wallet.addr;
+
+        // Construct list of all possible debt services
+        for (uint256 i; i < supportedAssets.length; i++) {
+            for (uint256 j; j < supportedAssets.length; j++) {
+                if (i != j) {
+                    // Create DebtService
+                    address cToken = supportedAssets[i];
+                    address dToken = supportedAssets[j];
+                    DebtServiceHarness debtService = new DebtServiceHarness(owner, cToken, dToken);
+                    debtServices.push(debtService);
+
+                    // Fund DebtService with collateral
+                    _fund(address(debtService), cToken, assets.maxCAmts(cToken));
+                }
+            }
+        }
+    }
+
+    /// @dev
+    // - The contract's aToken balance should increase by amount of collateral supplied.
+    // - The owner's cToken balance should decrease by the amount of collateral supplied.
+    // - The act should be accomplished without a separate approve tx.
+    function testFuzz_AddCollateralWithPermit(uint256 _cAmt) public {
+        for (uint256 i; i < debtServices.length; i++) {
+            // Setup
+            address debtService = address(debtServices[i]);
+            address cToken = debtServices[i].C_TOKEN();
+            debtServices[i].exposed_borrow(assets.maxCAmts(cToken), 50);
+
+            // Assumptions
+            _cAmt = bound(_cAmt, assets.minCAmts(cToken), assets.maxCAmts(cToken));
+
+            // Fund owner and approve debtService
+            _fund(owner, cToken, _cAmt);
+
+            // Get permit
+            uint256 permitTimestamp = block.timestamp + 1000;
+            (uint8 v, bytes32 r, bytes32 s) = _getPermit(cToken, wallet, debtService, _cAmt, permitTimestamp);
+
+            // Pre-Act Assertions
+            uint256 preAtokenBalance = _getATokenBalance(debtService, cToken);
+            uint256 preOwnerCtokenBalance = IERC20(cToken).balanceOf(owner);
+            assertEq(preOwnerCtokenBalance, _cAmt);
+
+            // Act
+            vm.prank(owner);
+            debtServices[i].addCollateralWithPermit(_cAmt, permitTimestamp, v, r, s);
+
+            // Post-Act Assertions
+            uint256 postAtokenBalance = _getATokenBalance(debtService, cToken);
+            uint256 postOwnerCtokenBalance = IERC20(cToken).balanceOf(owner);
+            assertEq(postOwnerCtokenBalance, preOwnerCtokenBalance - _cAmt);
+            assertApproxEqAbs(postAtokenBalance, preAtokenBalance + _cAmt, 1);
+        }
+    }
+
+    /// @dev
+    // - It should revert with Unauthorized() error when called by an unauthorized sender.
+    function testFuzz_CannotAddCollateralWithPermit(uint256 _cAmt, address _sender) public {
+        for (uint256 i; i < debtServices.length; i++) {
+            // Setup
+            address debtService = address(debtServices[i]);
+            address cToken = debtServices[i].C_TOKEN();
+            debtServices[i].exposed_borrow(assets.maxCAmts(cToken), 50);
+
+            // Assumptions
+            _cAmt = bound(_cAmt, assets.minCAmts(cToken), assets.maxCAmts(cToken));
+            vm.assume(_sender != owner);
+
+            // Fund owner and approve debtService
+            _fund(owner, cToken, _cAmt);
+
+            // Get permit
+            uint256 permitTimestamp = block.timestamp + 1000;
+            (uint8 v, bytes32 r, bytes32 s) = _getPermit(cToken, wallet, debtService, _cAmt, permitTimestamp);
+
+            // Act
+            vm.prank(_sender);
+            vm.expectRevert(PositionAdmin.Unauthorized.selector);
+            debtServices[i].addCollateralWithPermit(_cAmt, permitTimestamp, v, r, s);
+        }
+    }
+
+    /// @dev
+    // - The contract's debt amount should decrease by amount repaid.
+    // - The owner's D_TOKEN balance should decrease by the amount repaid.
+    // - The act should be accomplished without a separate approve tx.
+    function testFuzz_RepayAfterCloseWithPermit(uint256 _payment) public {
+        // Setup
+        DebtServiceHarness[4] memory filteredDebtServices = _getFilteredDebtServicesByDToken(debtServices);
+
+        for (uint256 i; i < filteredDebtServices.length; i++) {
+            // Borrow
+            address cToken = debtServices[i].C_TOKEN();
+            address dToken = debtServices[i].D_TOKEN();
+            uint256 dAmt = debtServices[i].exposed_borrow(assets.maxCAmts(cToken), 50);
+
+            // Fund owner with dAmt of D_TOKEN
+            _fund(owner, dToken, dAmt);
+
+            // Bound
+            _payment = bound(_payment, 1, dAmt);
+
+            // Get permit
+            uint256 permitTimestamp = block.timestamp + 1000;
+            (uint8 v, bytes32 r, bytes32 s) =
+                _getPermit(dToken, wallet, address(debtServices[i]), _payment, permitTimestamp);
+
+            // Pre-act data
+            uint256 preDebtAmt = debtServices[i].exposed_getDebtAmt();
+            uint256 preOwnerDtokenBalance = IERC20(debtServices[i].D_TOKEN()).balanceOf(owner);
+
+            // Act
+            vm.prank(owner);
+            debtServices[i].repayAfterCloseWithPermit(_payment, WITHDRAW_BUFFER, permitTimestamp, v, r, s);
+
+            // Post-act data
+            uint256 postDebtAmt = debtServices[i].exposed_getDebtAmt();
+            uint256 postOwnerDtokenBalance = IERC20(debtServices[i].D_TOKEN()).balanceOf(owner);
+
+            // Assert
+            assertApproxEqAbs(postDebtAmt, preDebtAmt - _payment, 1);
+            assertEq(postOwnerDtokenBalance, preOwnerDtokenBalance - _payment);
+        }
+    }
+
+    /// @dev
+    // - It should revert with Unauthorized() error when called by an unauthorized sender.
+    function testFuzz_CannotRepayAfterCloseWithPermit(uint256 _payment, address _sender) public {
+        // Setup
+        DebtServiceHarness[4] memory filteredDebtServices = _getFilteredDebtServicesByDToken(debtServices);
+
+        for (uint256 i; i < filteredDebtServices.length; i++) {
+            // Borrow
+            address cToken = debtServices[i].C_TOKEN();
+            address dToken = debtServices[i].D_TOKEN();
+            uint256 dAmt = debtServices[i].exposed_borrow(assets.maxCAmts(cToken), 50);
+
+            // Fund owner with dAmt of D_TOKEN
+            _fund(owner, dToken, dAmt);
+
+            // Assumptions
+            _payment = bound(_payment, 1, dAmt);
+            vm.assume(_sender != owner);
+
+            // Get permit
+            uint256 permitTimestamp = block.timestamp + 1000;
+            (uint8 v, bytes32 r, bytes32 s) =
+                _getPermit(dToken, wallet, address(debtServices[i]), _payment, permitTimestamp);
+
+            // Act
+            vm.prank(_sender);
+            vm.expectRevert(PositionAdmin.Unauthorized.selector);
+            debtServices[i].repayAfterCloseWithPermit(_payment, WITHDRAW_BUFFER, permitTimestamp, v, r, s);
         }
     }
 }

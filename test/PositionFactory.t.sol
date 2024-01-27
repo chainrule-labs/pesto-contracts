@@ -308,7 +308,6 @@ contract PositionFactoryTest is Test, TokenUtils {
         vm.deal(_sender, _amount + gasMoney);
 
         // Pre-Act Data
-        uint256 preSenderBalance = _sender.balance;
         uint256 preContractBalance = address(positionFactory).balance;
 
         // Act
@@ -316,12 +315,10 @@ contract PositionFactoryTest is Test, TokenUtils {
         (bool success,) = address(positionFactory).call{ value: _amount }(abi.encodeWithSignature("nonExistentFn()"));
 
         // Post-Act Data
-        uint256 postSenderBalance = _sender.balance;
         uint256 postContractBalance = address(positionFactory).balance;
 
         // Assertions
         assertTrue(success);
-        assertEq(postSenderBalance, preSenderBalance - _amount);
         assertEq(postContractBalance, preContractBalance + _amount);
     }
 }

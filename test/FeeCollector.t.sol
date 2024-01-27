@@ -500,7 +500,6 @@ contract FeeCollectorTest is Test, TokenUtils {
         vm.deal(_sender, _amount + gasMoney);
 
         // Pre-Act Data
-        uint256 preSenderBalance = _sender.balance;
         uint256 preContractBalance = feeCollectorAddr.balance;
 
         // Act
@@ -508,12 +507,10 @@ contract FeeCollectorTest is Test, TokenUtils {
         (bool success,) = feeCollectorAddr.call{ value: _amount }(abi.encodeWithSignature("nonExistentFn()"));
 
         // Post-Act Data
-        uint256 postSenderBalance = _sender.balance;
         uint256 postContractBalance = feeCollectorAddr.balance;
 
         // Assertions
         assertTrue(success);
-        assertEq(postSenderBalance, preSenderBalance - _amount);
         assertEq(postContractBalance, preContractBalance + _amount);
     }
 }

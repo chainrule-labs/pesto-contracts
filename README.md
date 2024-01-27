@@ -8,34 +8,21 @@ On-chain shorting via Aave and Uniswap.
 
 ## Principles
 
-1. Immutable
-2. No Governance
-3. No Admin Keys
+The following outlines principles for core protocol funcitonality.
+
+1. Immutable.
+2. No Governance.
+3. No Admin Keys.
 
 ## To-Do
 
 Logic:
 
--   [x] Make `FEE_COLLECTOR` an immutable variable in Position.sol and PositionFactory.sol
--   [x] Add `owner()` and `clientRate()` to IFeeCollector
+-   All caught up!🙂
 
 Tests:
 
 -   [ ] Separate integration tests from unit tests (separate PR)
--   [x] testFuzz_CollectFeesWithClient
--   [x] testFuzz_CollectFeesNoClient
--   [x] testFuzz_CollectFeesWithClientIntegrated
--   [x] testFuzz_CollectFeesNoClientIntegrated
--   [x] testFuzz_ClientWithdraw
--   [x] testFuzz_SetClientRate
--   [x] testFuzz_CannotSetClientRateOutOfRange
--   [x] testFuzz_CannotSetClientRateUnauthorized
--   [x] testFuzz_ExtractNative
--   [x] testFuzz_CannotExtractNative
--   [x] testFuzz_ExtractERC20
--   [x] testFuzz_CannotExtractERC20
--   [x] testFuzz_Receive
--   [x] testFuzz_Fallback
 
 Considerations:
 

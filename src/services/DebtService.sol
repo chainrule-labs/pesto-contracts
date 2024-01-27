@@ -6,6 +6,7 @@ import { PositionAdmin } from "src/PositionAdmin.sol";
 import { SafeTransferLib, ERC20 } from "solmate/utils/SafeTransferLib.sol";
 import { IPool } from "src/interfaces/aave/IPool.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
+import { IERC20Permit } from "src/interfaces/token/IERC20Permit.sol";
 import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IERC20Metadata } from "src/interfaces/token/IERC20Metadata.sol";
 
@@ -126,6 +127,26 @@ contract DebtService is PositionAdmin {
     }
 
     /**
+     * @notice Increases the collateral amount for this contract's loan with permit, obviating the need for a separate approve tx.
+     * @param _cAmt The amount of collateral to be supplied (units: C_DECIMALS).
+     * @param _deadline The deadline timestamp that the permit is valid.
+     * @param _v The V parameter of ERC712 permit signature.
+     * @param _r The R parameter of ERC712 permit signature.
+     * @param _s The S parameter of ERC712 permit signature.
+     */
+    function addCollateralWithPermit(uint256 _cAmt, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s)
+        public
+        payable
+        onlyOwner
+    {
+        // 1. Approve with permit
+        IERC20Permit(C_TOKEN).permit(msg.sender, address(this), _cAmt, _deadline, _v, _r, _s);
+
+        // 2. Add Collateral
+        addCollateral(_cAmt);
+    }
+
+    /**
      * @notice Repays any outstanding debt to Aave and transfers remaining collateral from Aave to owner.
      * @param _dAmt The amount of debt token to repay to Aave (units: D_DECIMALS).
      *              To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
@@ -137,5 +158,31 @@ contract DebtService is PositionAdmin {
         _repay(_dAmt);
 
         _withdraw(OWNER, _withdrawBuffer);
+    }
+
+    /**
+     * @notice Repays any outstanding debt to Aave and transfers remaining collateral from Aave to owner,
+     *         with permit, obviating the need for a separate approve tx.
+     * @param _dAmt The amount of debt token to repay to Aave (units: D_DECIMALS).
+     *              To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
+     * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (default = 100_000, units: 8 decimals).
+     * @param _deadline The deadline timestamp that the permit is valid.
+     * @param _v The V parameter of ERC712 permit signature.
+     * @param _r The R parameter of ERC712 permit signature.
+     * @param _s The S parameter of ERC712 permit signature.
+     */
+    function repayAfterCloseWithPermit(
+        uint256 _dAmt,
+        uint256 _withdrawBuffer,
+        uint256 _deadline,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) public payable onlyOwner {
+        // 1. Approve with permit
+        IERC20Permit(D_TOKEN).permit(msg.sender, address(this), _dAmt, _deadline, _v, _r, _s);
+
+        // 2. Repay
+        repayAfterClose(_dAmt, _withdrawBuffer);
     }
 }
