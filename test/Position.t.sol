@@ -6,7 +6,6 @@ import { Test } from "forge-std/Test.sol";
 import { VmSafe } from "forge-std/Vm.sol";
 
 // Local Imports
-import { FeeCollector } from "src/FeeCollector.sol";
 import { PositionFactory } from "src/PositionFactory.sol";
 import { PositionAdmin } from "src/PositionAdmin.sol";
 import {
@@ -14,6 +13,7 @@ import {
     AAVE_ORACLE,
     CONTRACT_DEPLOYER,
     DAI,
+    FEE_COLLECTOR,
     PROFIT_PERCENT,
     REPAY_PERCENT,
     SWAP_ROUTER,
@@ -58,7 +58,6 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
 
     // Test contracts
     PositionFactory public positionFactory;
-    FeeCollector public feeCollector;
     Assets public assets;
     TestPosition[] public positions;
 
@@ -81,11 +80,11 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
 
         // Deploy FeeCollector
         vm.prank(CONTRACT_DEPLOYER);
-        feeCollector = new FeeCollector(CONTRACT_DEPLOYER);
+        deployCodeTo("FeeCollector.sol", abi.encode(CONTRACT_DEPLOYER), FEE_COLLECTOR);
 
         // Deploy PositionFactory
         vm.prank(CONTRACT_DEPLOYER);
-        positionFactory = new PositionFactory(CONTRACT_DEPLOYER, address(feeCollector));
+        positionFactory = new PositionFactory(CONTRACT_DEPLOYER);
 
         // Deploy and store all possible positions
         for (uint256 i; i < supportedAssets.length; i++) {
@@ -560,7 +559,6 @@ contract PositionPermitTest is Test, TokenUtils, DebtUtils {
 
     // Test contracts
     PositionFactory public positionFactory;
-    FeeCollector public feeCollector;
     Assets public assets;
     TestPosition[] public positions;
 
@@ -584,11 +582,11 @@ contract PositionPermitTest is Test, TokenUtils, DebtUtils {
 
         // Deploy FeeCollector
         vm.prank(CONTRACT_DEPLOYER);
-        feeCollector = new FeeCollector(CONTRACT_DEPLOYER);
+        deployCodeTo("FeeCollector.sol", abi.encode(CONTRACT_DEPLOYER), FEE_COLLECTOR);
 
         // Deploy PositionFactory
         vm.prank(CONTRACT_DEPLOYER);
-        positionFactory = new PositionFactory(CONTRACT_DEPLOYER, address(feeCollector));
+        positionFactory = new PositionFactory(CONTRACT_DEPLOYER);
 
         // Set contract owner
         wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(1)))));

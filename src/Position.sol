@@ -15,19 +15,18 @@ import { IFeeCollector } from "src/interfaces/IFeeCollector.sol";
 contract Position is DebtService, SwapService {
     // Constants: no SLOAD to save gas
     uint256 public constant PROTOCOL_FEE = 3;
+    address public constant FEE_COLLECTOR = 0x7A7AbDb9E12F3a9845E2433958Eef8FB9C8489Ee;
 
     // Immutables: no SLOAD to save gas
-    address public immutable FEE_COLLECTOR;
     address public immutable B_TOKEN;
 
     // Events
     event Short(uint256 cAmt, uint256 dAmt, uint256 bAmt);
     event Close(uint256 gains);
 
-    constructor(address _owner, address _feeCollector, address _cToken, address _dToken, address _bToken)
+    constructor(address _owner, address _cToken, address _dToken, address _bToken)
         DebtService(_owner, _cToken, _dToken)
     {
-        FEE_COLLECTOR = _feeCollector;
         B_TOKEN = _bToken;
     }
 

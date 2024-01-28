@@ -5,7 +5,6 @@ pragma solidity ^0.8.21;
 import { Test } from "forge-std/Test.sol";
 
 // Local Imports
-import { FeeCollector } from "src/FeeCollector.sol";
 import { PositionFactory } from "src/PositionFactory.sol";
 import { Assets, CONTRACT_DEPLOYER } from "test/common/Constants.t.sol";
 import { TokenUtils } from "test/common/utils/TokenUtils.t.sol";
@@ -16,7 +15,6 @@ contract PositionFactoryTest is Test, TokenUtils {
     /* solhint-disable func-name-mixedcase */
 
     // Test Contracts
-    FeeCollector public feeCollector;
     PositionFactory public positionFactory;
     Assets public assets;
 
@@ -32,12 +30,8 @@ contract PositionFactoryTest is Test, TokenUtils {
         mainnetFork = vm.createFork(vm.envString("RPC_URL"));
         vm.selectFork(mainnetFork);
 
-        // Deploy FeeCollector
         vm.prank(CONTRACT_DEPLOYER);
-        feeCollector = new FeeCollector(CONTRACT_DEPLOYER);
-
-        vm.prank(CONTRACT_DEPLOYER);
-        positionFactory = new PositionFactory(CONTRACT_DEPLOYER, address(feeCollector));
+        positionFactory = new PositionFactory(CONTRACT_DEPLOYER);
         assets = new Assets();
     }
 
