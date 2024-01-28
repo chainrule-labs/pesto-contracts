@@ -14,9 +14,6 @@ contract PositionFactory is Ownable {
     // Constants: no SLOAD to save gas
     address private constant CONTRACT_DEPLOYER = 0x0a5B347509621337cDDf44CBCf6B6E7C9C908CD2;
 
-    // Immutables: no SLOAD to save gas
-    address public immutable FEE_COLLECTOR;
-
     // Factory Storage
     /// @dev Mapping from owner to cToken to dToken to bToken to position
     mapping(address => mapping(address => mapping(address => mapping(address => address)))) public positions;
@@ -26,9 +23,8 @@ contract PositionFactory is Ownable {
     error Unauthorized();
     error PositionExists();
 
-    constructor(address _owner, address _feeCollector) Ownable(_owner) {
+    constructor(address _owner) Ownable(_owner) {
         if (msg.sender != CONTRACT_DEPLOYER) revert Unauthorized();
-        FEE_COLLECTOR = _feeCollector;
     }
 
     /**
@@ -44,7 +40,7 @@ contract PositionFactory is Ownable {
     {
         if (positions[msg.sender][_cToken][_dToken][_bToken] != address(0)) revert PositionExists();
 
-        position = address(new Position(msg.sender, FEE_COLLECTOR, _cToken, _dToken, _bToken));
+        position = address(new Position(msg.sender, _cToken, _dToken, _bToken));
 
         positionsLookup[msg.sender].push(position);
         positions[msg.sender][_cToken][_dToken][_bToken] = position;
