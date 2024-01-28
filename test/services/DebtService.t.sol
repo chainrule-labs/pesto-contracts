@@ -8,7 +8,7 @@ import { VmSafe } from "forge-std/Vm.sol";
 // Local Imports
 import { PositionAdmin } from "src/PositionAdmin.sol";
 import { DebtServiceHarness } from "test/harness/DebtServiceHarness.t.sol";
-import { DebtUtils } from "test/services/utils/DebtUtils.t.sol";
+import { DebtUtils } from "test/common/utils/DebtUtils.t.sol";
 import { TokenUtils } from "test/common/utils/TokenUtils.t.sol";
 import { Assets, AAVE_ORACLE, AAVE_POOL, REPAY_BUFFER, WITHDRAW_BUFFER } from "test/common/Constants.t.sol";
 import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";

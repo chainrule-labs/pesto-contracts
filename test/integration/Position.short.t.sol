@@ -7,22 +7,16 @@ import { VmSafe } from "forge-std/Vm.sol";
 
 // Local Imports
 import { PositionFactory } from "src/PositionFactory.sol";
-import { PositionAdmin } from "src/PositionAdmin.sol";
 import {
-    Assets,
-    CONTRACT_DEPLOYER,
-    DAI,
-    FEE_COLLECTOR,
-    TEST_CLIENT,
-    USDC,
-    WITHDRAW_BUFFER
+    Assets, AAVE_ORACLE, CONTRACT_DEPLOYER, DAI, FEE_COLLECTOR, TEST_CLIENT, USDC
 } from "test/common/Constants.t.sol";
 import { TokenUtils } from "test/common/utils/TokenUtils.t.sol";
 import { DebtUtils } from "test/common/utils/DebtUtils.t.sol";
+import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IPosition } from "src/interfaces/IPosition.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
-contract PositionTest is Test, TokenUtils, DebtUtils {
+contract PositionShortTest is Test, TokenUtils, DebtUtils {
     /* solhint-disable func-name-mixedcase */
 
     struct TestPosition {
@@ -38,19 +32,17 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
     TestPosition[] public positions;
 
     // Test Storage
-    VmSafe.Wallet public wallet;
     address public positionAddr;
     uint256 public mainnetFork;
-    address public owner;
+    address public owner = address(this);
+
+    // Events
+    event Short(uint256 cAmt, uint256 dAmt, uint256 bAmt);
 
     function setUp() public {
         // Setup: use mainnet fork
         mainnetFork = vm.createFork(vm.envString("RPC_URL"));
         vm.selectFork(mainnetFork);
-
-        // Set contract owner
-        wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(1)))));
-        owner = wallet.addr;
 
         // Deploy assets
         assets = new Assets();
@@ -75,7 +67,6 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
                         // Exclude positions with no pool
                         bool poolExists = !((dToken == USDC && bToken == DAI) || (dToken == DAI && bToken == USDC));
                         if (k != j && poolExists) {
-                            vm.prank(owner);
                             positionAddr = positionFactory.createPosition(cToken, dToken, bToken);
                             TestPosition memory newPosition =
                                 TestPosition({ addr: positionAddr, cToken: cToken, dToken: dToken, bToken: bToken });
@@ -84,6 +75,15 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
                     }
                 }
             }
+        }
+
+        // Mock AaveOracle
+        for (uint256 i; i < supportedAssets.length; i++) {
+            vm.mockCall(
+                AAVE_ORACLE,
+                abi.encodeWithSelector(IAaveOracle(AAVE_ORACLE).getAssetPrice.selector, supportedAssets[i]),
+                abi.encode(assets.prices(supportedAssets[i]))
+            );
         }
     }
 
@@ -94,14 +94,12 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
     }
 
     /// @dev
-    // - It should revert with Unauthorized() error when called by an unauthorized sender.
-    function testFuzz_CannotShort(address _sender) public {
-        // Setup
-        uint256 ltv = 60;
-
-        // Assumptions
-        vm.assume(_sender != owner);
-
+    // - Owner's cToken balance should decrease by collateral amount supplied.
+    // - Position's bToken balance should increase by amount receieved from swap.
+    // - The above should be true for a wide range of LTVs.
+    // - The above should be true for a wide range of collateral amounts.
+    // - The above should be true for all supported tokens.
+    function testFuzz_Short(uint256 _ltv, uint256 _cAmt) public {
         // Take snapshot
         uint256 id = vm.snapshot();
 
@@ -109,84 +107,41 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
             // Test variables
             address addr = positions[i].addr;
             address cToken = positions[i].cToken;
-            uint256 cAmt = assets.maxCAmts(cToken);
+            address bToken = positions[i].bToken;
+
+            // Bound fuzzed variables
+            _ltv = bound(_ltv, 1, 60);
+            _cAmt = bound(_cAmt, assets.minCAmts(cToken), assets.maxCAmts(cToken));
 
             // Fund owner with collateral
-            _fund(owner, cToken, cAmt);
+            _fund(owner, cToken, _cAmt);
 
             // Approve position to spend collateral
-            IERC20(cToken).approve(addr, cAmt);
+            IERC20(cToken).approve(addr, _cAmt);
+
+            // Pre-act balances
+            uint256 cTokenPreBal = IERC20(cToken).balanceOf(owner);
+            uint256 bTokenPreBal = IERC20(bToken).balanceOf(addr);
 
             // Act
-            vm.prank(_sender);
-            vm.expectRevert(PositionAdmin.Unauthorized.selector);
-            IPosition(addr).short(cAmt, ltv, 0, 3000, TEST_CLIENT);
+            vm.recordLogs();
+            IPosition(addr).short(_cAmt, _ltv, 0, 3000, TEST_CLIENT);
+            VmSafe.Log[] memory entries = vm.getRecordedLogs();
 
-            // Revert to snapshot
-            vm.revertTo(id);
-        }
-    }
+            // Post-act balances
+            uint256 cTokenPostBal = IERC20(cToken).balanceOf(owner);
+            uint256 bTokenPostBal = IERC20(bToken).balanceOf(addr);
+            bytes memory shortEvent = entries[entries.length - 1].data;
+            uint256 bAmt;
 
-    /// @dev
-    // - It should revert with Unauthorized() error when called by an unauthorized sender.
-    function testFuzz_CannotShortWithPermit(address _sender) public {
-        // Take snapshot
-        uint256 id = vm.snapshot();
+            assembly {
+                let startPos := sub(mload(shortEvent), 32)
+                bAmt := mload(add(shortEvent, add(0x20, startPos)))
+            }
 
-        for (uint256 i; i < positions.length; i++) {
-            // Test variables
-            address cToken = positions[i].cToken;
-            uint256 cAmt = assets.maxCAmts(cToken);
-            uint256 ltv = 60;
-
-            // Assumptions
-            vm.assume(_sender != owner);
-
-            // Fund owner with collateral
-            _fund(owner, cToken, cAmt);
-
-            // Get permit
-            uint256 permitTimestamp = block.timestamp + 1000;
-            (uint8 v, bytes32 r, bytes32 s) = _getPermit(cToken, wallet, positions[i].addr, cAmt, permitTimestamp);
-
-            // Act
-            vm.prank(_sender);
-            vm.expectRevert(PositionAdmin.Unauthorized.selector);
-            IPosition(positions[i].addr).shortWithPermit(cAmt, ltv, 0, 3000, TEST_CLIENT, permitTimestamp, v, r, s);
-
-            // Revert to snapshot
-            vm.revertTo(id);
-        }
-    }
-
-    /// @dev
-    // - It should revert with Unauthorized() error when called by an unauthorized sender.
-    function testFuzz_CannotClose(address _sender) public {
-        // Setup
-        uint256 ltv = 50;
-
-        // Assumptions
-        vm.assume(_sender != owner);
-
-        // Take snapshot
-        uint256 id = vm.snapshot();
-
-        for (uint256 i; i < positions.length; i++) {
-            // Test variables
-            address addr = positions[i].addr;
-
-            // Setup: open short position
-            uint256 cAmt = assets.maxCAmts(positions[i].cToken);
-            _fund(owner, positions[i].cToken, cAmt);
-            vm.startPrank(owner);
-            IERC20(positions[i].cToken).approve(addr, cAmt);
-            IPosition(addr).short(cAmt, ltv, 0, 3000, TEST_CLIENT);
-            vm.stopPrank();
-
-            // Act
-            vm.prank(_sender);
-            vm.expectRevert(PositionAdmin.Unauthorized.selector);
-            IPosition(addr).close(3000, false, 0, WITHDRAW_BUFFER);
+            // Assertions
+            assertEq(cTokenPostBal, cTokenPreBal - _cAmt);
+            assertEq(bTokenPostBal, bTokenPreBal + bAmt);
 
             // Revert to snapshot
             vm.revertTo(id);

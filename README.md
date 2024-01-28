@@ -22,7 +22,8 @@ Logic:
 
 Tests:
 
--   [ ] Separate integration tests from unit tests (separate PR)
+-   [x] Separate integration tests from unit tests (separate PR)
+-   [x] Move all utils to test/common/
 
 Considerations:
 
