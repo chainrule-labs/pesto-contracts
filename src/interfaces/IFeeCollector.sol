@@ -35,7 +35,7 @@ interface IFeeCollector {
 
     /**
      * @notice Collects fees from Position contracts when collateral is added.
-     * @param _client The address, controlled by client operators, for receiving protocol fees.
+     * @param _client The address where a client operator will receive protocols fees.
      * @param _token The token to collect fees in (the collateral token of the calling Position contract).
      * @param _amt The total amount of fees to collect.
      */
@@ -45,6 +45,26 @@ interface IFeeCollector {
      * @param _token The token address to withdraw.
      */
     function clientWithdraw(address _token) external payable;
+
+    /**
+     * @notice Allows clients to set the percentage of the clientRate they will receive each revenue-generating tx.
+     *         Amounts less than 100 will give the calling client's users a protocol fee discount:
+     *         clientTakeRateOfProtocolFee = clientRate * _clientTakeRate
+     *              ex: _clientTakeRate = 50% -> clientTakeRate = clientRate * 0.5
+     *         userTakeRateOfProtocolFee =  clientRate * (1 - _clientTakeRate)
+     *              ex: _clientTakeRate = 50% -> userTakeRate = clientRate * (1 - 0.5)
+     *         clientFee = protocolFee * clientTakeRateOfProtocolFee
+     *         userSavings = protocolFee * userTakeRateOfProtocolFee
+     * @param _clientTakeRate The percentage of the clientRate the client will receive each revenue-generating tx (100 = 100%).
+     */
+    function setClientTakeRate(uint256 _clientTakeRate) external payable;
+
+    /**
+     * @notice Returns the amount discounted from the protocol fee by using the provided client.
+     * @param _client The address where a client operator will receive protocols fees.
+     * @param _protocolFee The maximum amount of fees the protocol will collect.
+     */
+    function getUserSavings(address _client, uint256 _protocolFee) external view returns (uint256 userSavings);
 
     /* ****************************************************************************
     **

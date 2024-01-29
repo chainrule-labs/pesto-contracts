@@ -5,18 +5,14 @@ pragma solidity ^0.8.21;
 import { DebtService } from "src/services/DebtService.sol";
 import { SwapService } from "src/services/SwapService.sol";
 import { SafeTransferLib, ERC20 } from "solmate/utils/SafeTransferLib.sol";
+import { FeeLib } from "src/libraries/FeeLib.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 import { IERC20Permit } from "src/interfaces/token/IERC20Permit.sol";
-import { IFeeCollector } from "src/interfaces/IFeeCollector.sol";
 
 /// @title Position
 /// @author Chain Rule, LLC
 /// @notice Manages the owner's individual position
 contract Position is DebtService, SwapService {
-    // Constants: no SLOAD to save gas
-    uint256 public constant PROTOCOL_FEE = 3;
-    address public constant FEE_COLLECTOR = 0x7A7AbDb9E12F3a9845E2433958Eef8FB9C8489Ee;
-
     // Immutables: no SLOAD to save gas
     address public immutable B_TOKEN;
 
@@ -36,7 +32,7 @@ contract Position is DebtService, SwapService {
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
      * @param _poolFee The fee of the Uniswap pool.
-     * @param _client The address, controlled by client operators, for receiving protocol fees (use address(0) if no client).
+     * @param _client The address where a client operator will receive protocols fees. (use address(0) if no client).
      */
     function short(uint256 _cAmt, uint256 _ltv, uint256 _swapAmtOutMin, uint24 _poolFee, address _client)
         public
@@ -47,10 +43,7 @@ contract Position is DebtService, SwapService {
         SafeTransferLib.safeTransferFrom(ERC20(C_TOKEN), msg.sender, address(this), _cAmt);
 
         // 2. Take protocol fee
-        uint256 protocolFee = (_cAmt * PROTOCOL_FEE) / 1000;
-        uint256 cAmtNet = _cAmt - protocolFee;
-        SafeTransferLib.safeApprove(ERC20(C_TOKEN), FEE_COLLECTOR, protocolFee);
-        IFeeCollector(FEE_COLLECTOR).collectFees(_client, C_TOKEN, protocolFee);
+        uint256 cAmtNet = FeeLib.takeProtocolFee(C_TOKEN, _cAmt, _client);
 
         // 3. Borrow debt token
         uint256 dAmt = _borrow(cAmtNet, _ltv);
@@ -68,7 +61,7 @@ contract Position is DebtService, SwapService {
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
      * @param _poolFee The fee of the Uniswap pool.
-     * @param _client The address, controlled by client operators, for receiving protocol fees (use address(0) if no client).
+     * @param _client The address where a client operator will receive protocols fees. (use address(0) if no client).
      * @param _deadline The deadline timestamp that the permit is valid.
      * @param _v The V parameter of ERC712 permit signature.
      * @param _r The R parameter of ERC712 permit signature.

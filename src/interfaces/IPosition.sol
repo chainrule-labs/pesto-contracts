@@ -36,7 +36,7 @@ interface IPosition {
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
      * @param _poolFee The fee of the Uniswap pool.
-     * @param _client The address, controlled by client operators, for receiving protocol fees (use address(0) if no client).
+     * @param _client The address where a client operator will receive protocols fees. (use address(0) if no client).
      */
     function short(uint256 _cAmt, uint256 _ltv, uint256 _swapAmtOutMin, uint24 _poolFee, address _client)
         external
@@ -48,7 +48,7 @@ interface IPosition {
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
      * @param _poolFee The fee of the Uniswap pool.
-     * @param _client The address, controlled by client operators, for receiving protocol fees (use address(0) if no client).
+     * @param _client The address where a client operator will receive protocols fees. (use address(0) if no client).
      * @param _deadline The deadline timestamp that the permit is valid.
      * @param _v The V parameter of ERC712 permit signature.
      * @param _r The R parameter of ERC712 permit signature.

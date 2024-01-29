@@ -13,7 +13,7 @@ import {
     CONTRACT_DEPLOYER,
     FEE_COLLECTOR,
     TEST_CLIENT,
-    PROTOCOL_FEE,
+    PROTOCOL_FEE_RATE,
     CLIENT_RATE,
     USDC,
     WETH,
@@ -110,7 +110,7 @@ contract FeeCollectorShortTest is Test, TokenUtils {
             _cAmt = bound(_cAmt, assets.minCAmts(cToken), assets.maxCAmts(cToken));
 
             // Expectations
-            uint256 protocolFee = (_cAmt * PROTOCOL_FEE) / 1000;
+            uint256 protocolFee = (_cAmt * PROTOCOL_FEE_RATE) / 1000;
             uint256 clientFee = (protocolFee * CLIENT_RATE) / 100;
 
             // Fund positionOwner with _cAmt of cToken
@@ -153,7 +153,7 @@ contract FeeCollectorShortTest is Test, TokenUtils {
             _cAmt = bound(_cAmt, assets.minCAmts(cToken), assets.maxCAmts(cToken));
 
             // Expectations
-            uint256 protocolFee = (_cAmt * PROTOCOL_FEE) / 1000;
+            uint256 protocolFee = (_cAmt * PROTOCOL_FEE_RATE) / 1000;
 
             // Fund positionOwner with _cAmt of cToken
             _fund(positionOwner, cToken, _cAmt);

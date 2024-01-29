@@ -18,14 +18,19 @@ The following outlines principles for core protocol funcitonality.
 
 Logic:
 
--   All caught up!🙂
+-   Move PositionAdmin to services, rename
+-   [ ] Consider changing short() to add()
+-   [ ] Emit event when a position is created (get clear on whether or not an implicit event is emitted when creating a contract)
 
 Tests:
 
--   [x] Separate integration tests from unit tests (separate PR)
--   [x] Move all utils to test/common/
+-   [ ] Invariant: the clientTakeRate + userTakeRate = clientRate
+-   [ ] Invariant: the totalTokenAmt - sum(clientFeesToken) = (1 - clientRate) \* totalTokenAmt
+-   [ ] Unit test setClientTakeRate()
+-   [ ] Unit test getUserSavings()
+-   [ ] Unit test FeeLib via Test Harness
+-   [ ] Account for userSavings in all affected FeeCollector unit and integration tests
 
 Considerations:
 
--   [ ] Consider emitting Position events through another contract
--   [ ] Consider adding a function to short with signatures, via `ERCRecover`.
+-   None at the moment🙂
