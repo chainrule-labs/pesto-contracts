@@ -10,7 +10,7 @@ import { Assets, CONTRACT_DEPLOYER } from "test/common/Constants.t.sol";
 import { TokenUtils } from "test/common/utils/TokenUtils.t.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
-contract FeeCollectorNetProtocolFeesTest is Test, TokenUtils {
+contract FeeCollectorClientFeesTest is Test, TokenUtils {
     /* solhint-disable func-name-mixedcase */
 
     // Test contracts
@@ -45,29 +45,33 @@ contract FeeCollectorNetProtocolFeesTest is Test, TokenUtils {
     }
 
     /// @dev
-    // - Invariant: protocol fees should always be greater than or equal to: [1 - clientRate] * totalFees
-    function testFuzz_NetProtocolFeesInvariant(
+    function testFuzz_ClientProtocolFeeBalances(
         uint256 _feeAmount,
+        uint256 _time,
         uint256 _clientRate,
         uint256 _clientTakeRate,
-        uint256 _time,
         address _client
     ) public {
         for (uint256 i; i < supportedAssets.length; i++) {
             // Bounds
             _clientRate = bound(_clientRate, 30, 100);
             _clientTakeRate = bound(_clientTakeRate, 0, 100);
+            vm.assume(_client != address(0));
 
             // Setup
             address feeToken = supportedAssets[i];
+            // uint256 clientTakeRate = 50;
 
-            // Set client rates
+            // Set client rate
             vm.prank(CONTRACT_DEPLOYER);
             feeCollector.setClientRate(_clientRate);
 
+            // Set client take rate
             vm.prank(_client);
             feeCollector.setClientTakeRate(_clientTakeRate);
 
+            // uint256 clientFeeSum;
+            uint256 expClientsBal = 0;
             for (uint256 j; j < 100; j++) {
                 // Bounds
                 _feeAmount = bound(_feeAmount, assets.minCAmts(feeToken), assets.maxCAmts(feeToken));
@@ -81,21 +85,22 @@ contract FeeCollectorNetProtocolFeesTest is Test, TokenUtils {
                 (, uint256 clientFee) = feeCollector.getClientAllocations(_client, _feeAmount);
                 feeCollector.collectFees(_client, feeToken, _feeAmount, clientFee);
 
+                // Calculate expected client fee
+                uint256 expectedClientFee = (_clientTakeRate * _clientRate * _feeAmount) / 1e4;
+
+                // The expectedClientFee should always be equal to or 1 less than clientFee, due to integer division
+                assertApproxEqAbs(expectedClientFee, clientFee, 1);
+                expClientsBal += clientFee;
+
                 // Go forward in time (should be time invariant)
                 skip(_time);
             }
 
             // Get balances
-            uint256 totalBal = IERC20(feeToken).balanceOf(feeCollectorAddr);
             uint256 clientsBal = feeCollector.totalClientBalances(feeToken);
 
-            // Calculated expected and gather actual
-            uint256 netProtocolBal = totalBal - clientsBal;
-            uint256 ourMinPercent = 100 - _clientRate;
-            uint256 ourMinExpectedMoney = (ourMinPercent * totalBal) / 100;
-
             // Assertions
-            assertGe(netProtocolBal, ourMinExpectedMoney, "netProtocolBal < ourMinExpectedMoney");
+            assertEq(expClientsBal, clientsBal, "expClientsBal != clientsBal");
         }
     }
 }

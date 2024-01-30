@@ -295,15 +295,16 @@ contract FeeCollectorTest is Test, TokenUtils, FeeUtils {
 
             // Expectations
             uint256 maxClientFee = (CLIENT_RATE * _maxFee) / 100;
-            (uint256 expectedUserSavings, uint256 expectedClientFee) =
-                _getExpectedClientAllocations(_maxFee, _clientTakeRate);
+            uint256 userTakeRate = 100 - _clientTakeRate;
+            uint256 expectedClientFee = (_clientTakeRate * CLIENT_RATE * _maxFee) / 1e4;
+            uint256 expectedUserSavings = (userTakeRate * CLIENT_RATE * _maxFee) / 1e4;
 
             // Act
             (uint256 userSavings, uint256 clientFee) = feeCollector.getClientAllocations(TEST_CLIENT, _maxFee);
 
             // Assertions
-            assertEq(userSavings, expectedUserSavings);
-            assertEq(clientFee, expectedClientFee);
+            assertApproxEqAbs(userSavings, expectedUserSavings, 1);
+            assertApproxEqAbs(clientFee, expectedClientFee, 1);
             assertEq(userSavings + clientFee, maxClientFee);
             assertLe(userSavings, maxClientFee);
             assertLe(clientFee, maxClientFee);

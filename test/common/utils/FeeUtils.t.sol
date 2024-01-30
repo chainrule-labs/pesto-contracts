@@ -14,8 +14,8 @@ contract FeeUtils is Test {
         returns (uint256 userSavings, uint256 clientFee)
     {
         uint256 userTakeRate = 100 - _clientTakeRate;
-        uint256 userPercentOfProtocolFee = (userTakeRate * CLIENT_RATE) / 100;
-        userSavings = (userPercentOfProtocolFee * _maxFee) / 100;
+        uint256 userPercentOfProtocolFee = (userTakeRate * CLIENT_RATE);
+        userSavings = (userPercentOfProtocolFee * _maxFee) / 1e4;
 
         // 2. Calculate client fee
         uint256 maxClientFee = (_maxFee * CLIENT_RATE) / 100;
