@@ -28,11 +28,11 @@ contract Position is DebtService, SwapService {
 
     /**
      * @notice Adds to this contract's short position.
-     * @param _cAmt The amount of collateral to be supplied for this transaction-specific loan (units: C_DECIMALS).
+     * @param _cAmt The amount of collateral token to be supplied for this transaction-specific loan (units: C_DECIMALS).
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
      * @param _poolFee The fee of the Uniswap pool.
-     * @param _client The address where a client operator will receive protocols fees. (use address(0) if no client).
+     * @param _client The address of the client operator. Use address(0) if not using a client.
      */
     function short(uint256 _cAmt, uint256 _ltv, uint256 _swapAmtOutMin, uint24 _poolFee, address _client)
         public
@@ -57,15 +57,15 @@ contract Position is DebtService, SwapService {
 
     /**
      * @notice Adds to this contract's short position with permit, obviating the need for a separate approve tx.
-     * @param _cAmt The amount of collateral to be supplied for this transaction-specific loan (units: C_DECIMALS).
+     * @param _cAmt The amount of collateral token to be supplied for this transaction-specific loan (units: C_DECIMALS).
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
      * @param _poolFee The fee of the Uniswap pool.
-     * @param _client The address where a client operator will receive protocols fees. (use address(0) if no client).
-     * @param _deadline The deadline timestamp that the permit is valid.
-     * @param _v The V parameter of ERC712 permit signature.
-     * @param _r The R parameter of ERC712 permit signature.
-     * @param _s The S parameter of ERC712 permit signature.
+     * @param _client The address of the client operator. Use address(0) if not using a client.
+     * @param _deadline The expiration timestamp of the permit.
+     * @param _v The V parameter of ERC712 permit signature for the permit.
+     * @param _r The R parameter of ERC712 permit signature for the permit.
+     * @param _s The S parameter of ERC712 permit signature for the permit.
      */
     function shortWithPermit(
         uint256 _cAmt,

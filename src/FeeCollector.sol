@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
+import "forge-std/console.sol";
+
 // Local Imports
 import { Ownable } from "src/dependencies/access/Ownable.sol";
 import { SafeTransferLib, ERC20 } from "solmate/utils/SafeTransferLib.sol";
@@ -79,6 +81,8 @@ contract FeeCollector is Ownable {
      * @notice Returns the amount discounted from the protocol fee by using the provided client.
      * @param _client The address where a client operator will receive protocols fees.
      * @param _maxFee The maximum amount of fees the protocol will collect.
+     * @return userSavings The amount of fees discounted from the protocol fee.
+     * @return clientFee The amount of fees the client will receive.
      */
     function getClientAllocations(address _client, uint256 _maxFee)
         public
@@ -93,6 +97,12 @@ contract FeeCollector is Ownable {
         // 2. Calculate client fee
         uint256 maxClientFee = (_maxFee * clientRate) / 100;
         clientFee = maxClientFee - userSavings;
+
+        // console.log("[getClientAllocations] clientRate: ", clientRate);
+        // console.log("[getClientAllocations] clientTakeRate: ", clientTakeRates[_client]);
+        // console.log("[getClientAllocations] _maxFee: ", _maxFee);
+        // console.log("[getClientAllocations] maxClientFee: ", maxClientFee);
+        // console.log("[getClientAllocations] userSavings: ", userSavings);
     }
 
     /* ****************************************************************************

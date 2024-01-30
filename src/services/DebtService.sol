@@ -112,7 +112,7 @@ contract DebtService is PositionAdmin {
     }
 
     /**
-     * @notice Increases the collateral amount for this contract's loan.
+     * @notice Increases the collateral amount backing this contract's loan.
      * @param _cAmt The amount of collateral to be supplied (units: C_DECIMALS).
      */
     function addCollateral(uint256 _cAmt) public payable onlyOwner {
@@ -129,10 +129,10 @@ contract DebtService is PositionAdmin {
     /**
      * @notice Increases the collateral amount for this contract's loan with permit, obviating the need for a separate approve tx.
      * @param _cAmt The amount of collateral to be supplied (units: C_DECIMALS).
-     * @param _deadline The deadline timestamp that the permit is valid.
-     * @param _v The V parameter of ERC712 permit signature.
-     * @param _r The R parameter of ERC712 permit signature.
-     * @param _s The S parameter of ERC712 permit signature.
+     * @param _deadline The expiration timestamp of the permit.
+     * @param _v The V parameter of ERC712 permit signature for the permit.
+     * @param _r The R parameter of ERC712 permit signature for the permit.
+     * @param _s The S parameter of ERC712 permit signature for the permit.
      */
     function addCollateralWithPermit(uint256 _cAmt, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s)
         public
@@ -166,10 +166,10 @@ contract DebtService is PositionAdmin {
      * @param _dAmt The amount of debt token to repay to Aave (units: D_DECIMALS).
      *              To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
      * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (default = 100_000, units: 8 decimals).
-     * @param _deadline The deadline timestamp that the permit is valid.
-     * @param _v The V parameter of ERC712 permit signature.
-     * @param _r The R parameter of ERC712 permit signature.
-     * @param _s The S parameter of ERC712 permit signature.
+     * @param _deadline The expiration timestamp of the permit.
+     * @param _v The V parameter of ERC712 permit signature for the permit.
+     * @param _r The R parameter of ERC712 permit signature for the permit.
+     * @param _s The S parameter of ERC712 permit signature for the permit.
      */
     function repayAfterCloseWithPermit(
         uint256 _dAmt,
