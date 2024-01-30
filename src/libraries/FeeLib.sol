@@ -20,10 +20,10 @@ library FeeLib {
      */
     function takeProtocolFee(address _token, uint256 _cAmt, address _client) internal returns (uint256 cAmtNet) {
         uint256 maxFee = (_cAmt * PROTOCOL_FEE_RATE) / 1000;
-        uint256 userSavings = IFeeCollector(FEE_COLLECTOR).getUserSavings(_client, maxFee);
-        uint256 fee = maxFee - userSavings;
-        cAmtNet = _cAmt - fee;
-        SafeTransferLib.safeApprove(ERC20(_token), FEE_COLLECTOR, fee);
-        IFeeCollector(FEE_COLLECTOR).collectFees(_client, _token, fee);
+        (uint256 userSavings, uint256 clientFee) = IFeeCollector(FEE_COLLECTOR).getClientAllocations(_client, maxFee);
+        uint256 totalFee = maxFee - userSavings;
+        cAmtNet = _cAmt - totalFee;
+        SafeTransferLib.safeApprove(ERC20(_token), FEE_COLLECTOR, totalFee);
+        IFeeCollector(FEE_COLLECTOR).collectFees(_client, _token, totalFee, clientFee);
     }
 }

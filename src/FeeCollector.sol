@@ -33,15 +33,14 @@ contract FeeCollector is Ownable {
      * @param _token The token to collect fees in (the collateral token of the calling Position contract).
      * @param _amt The total amount of fees to collect.
      */
-    function collectFees(address _client, address _token, uint256 _amt) external payable {
+    function collectFees(address _client, address _token, uint256 _amt, uint256 _clientFee) external payable {
         // 1. Transfer tokens to this contract
         SafeTransferLib.safeTransferFrom(ERC20(_token), msg.sender, address(this), _amt);
 
         // 2. Update client balances
         if (_client != address(0)) {
-            uint256 clientFee = (_amt * clientRate) / 100;
-            balances[_client][_token] += clientFee;
-            totalClientBalances[_token] += clientFee;
+            balances[_client][_token] += _clientFee;
+            totalClientBalances[_token] += _clientFee;
         }
     }
 
@@ -81,10 +80,19 @@ contract FeeCollector is Ownable {
      * @param _client The address where a client operator will receive protocols fees.
      * @param _maxFee The maximum amount of fees the protocol will collect.
      */
-    function getUserSavings(address _client, uint256 _maxFee) public view returns (uint256 userSavings) {
+    function getClientAllocations(address _client, uint256 _maxFee)
+        public
+        view
+        returns (uint256 userSavings, uint256 clientFee)
+    {
+        // 1. Calculate user savings
         uint256 userTakeRate = 100 - clientTakeRates[_client];
         uint256 userPercentOfProtocolFee = (userTakeRate * clientRate) / 100;
         userSavings = (userPercentOfProtocolFee * _maxFee) / 100;
+
+        // 2. Calculate client fee
+        uint256 maxClientFee = (_maxFee * clientRate) / 100;
+        clientFee = maxClientFee - userSavings;
     }
 
     /* ****************************************************************************

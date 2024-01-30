@@ -39,7 +39,7 @@ interface IFeeCollector {
      * @param _token The token to collect fees in (the collateral token of the calling Position contract).
      * @param _amt The total amount of fees to collect.
      */
-    function collectFees(address _client, address _token, uint256 _amt) external payable;
+    function collectFees(address _client, address _token, uint256 _amt, uint256 _clientFee) external payable;
     /**
      * @notice Withdraw collected fees from this contract.
      * @param _token The token address to withdraw.
@@ -64,7 +64,10 @@ interface IFeeCollector {
      * @param _client The address where a client operator will receive protocols fees.
      * @param _protocolFee The maximum amount of fees the protocol will collect.
      */
-    function getUserSavings(address _client, uint256 _protocolFee) external view returns (uint256 userSavings);
+    function getClientAllocations(address _client, uint256 _protocolFee)
+        external
+        view
+        returns (uint256 userSavings, uint256 clientFee);
 
     /* ****************************************************************************
     **

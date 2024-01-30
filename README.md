@@ -26,10 +26,10 @@ Tests:
 
 -   [ ] Invariant: the clientTakeRate + userTakeRate = clientRate
 -   [ ] Invariant: the totalTokenAmt - sum(clientFeesToken) = (1 - clientRate) \* totalTokenAmt
--   [ ] Unit test setClientTakeRate()
--   [ ] Unit test getUserSavings()
--   [ ] Unit test FeeLib via Test Harness
--   [ ] Account for userSavings in all affected FeeCollector unit and integration tests
+-   [x] Unit test setClientTakeRate()
+-   [x] Unit test getClientAllocations()
+-   [x] Unit test FeeLib via Test Harness
+-   [x] Account for userSavings in all affected FeeCollector unit and integration tests
 
 Considerations:
 
