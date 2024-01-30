@@ -254,12 +254,12 @@ interface IPool {
      * @param onBehalfOf The address that will receive the aTokens, same as msg.sender if the user
      *   wants to receive them on his own wallet, or a different address if the beneficiary of aTokens
      *   is a different wallet
-     * @param deadline The deadline timestamp that the permit is valid.
+     * @param deadline The expiration timestamp of the permit.
      * @param referralCode Code used to register the integrator originating the operation, for potential rewards.
      *   0 if the action is executed directly by the user, without any middle-man
-     * @param permitV The V parameter of ERC712 permit signature.
-     * @param permitR The R parameter of ERC712 permit signature.
-     * @param permitS The S parameter of ERC712 permit signature.
+     * @param permitV The V parameter of ERC712 signature for the permit.
+     * @param permitR The R parameter of ERC712 signature for the permit.
+     * @param permitS The S parameter of ERC712 signature for the permit.
      *
      */
     function supplyWithPermit(
@@ -333,10 +333,10 @@ interface IPool {
      * @param onBehalfOf Address of the user who will get his debt reduced/removed. Should be the address of the
      * user calling the function if he wants to reduce/remove his own debt, or the address of any other
      * other borrower whose debt should be removed
-     * @param deadline The deadline timestamp that the permit is valid.
-     * @param permitV The V parameter of ERC712 permit signature.
-     * @param permitR The R parameter of ERC712 permit signature.
-     * @param permitS The S parameter of ERC712 permit signature.
+     * @param deadline The expiration timestamp of the permit.
+     * @param permitV The V parameter of ERC712 signature for the permit.
+     * @param permitR The R parameter of ERC712 signature for the permit.
+     * @param permitS The S parameter of ERC712 signature for the permit.
      * @return The final amount repaid
      *
      */

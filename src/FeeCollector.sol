@@ -62,12 +62,10 @@ contract FeeCollector is Ownable {
     /**
      * @notice Allows clients to set the percentage of the clientRate they will receive each revenue-generating tx.
      *         Amounts less than 100 will give the calling client's users a protocol fee discount:
-     *         clientTakeRateOfProtocolFee = clientRate * _clientTakeRate
-     *              ex: _clientTakeRate = 50% -> clientTakeRate = clientRate * 0.5
-     *         userTakeRateOfProtocolFee =  clientRate * (1 - _clientTakeRate)
-     *              ex: _clientTakeRate = 50% -> userTakeRate = clientRate * (1 - 0.5)
-     *         clientFee = protocolFee * clientTakeRateOfProtocolFee
-     *         userSavings = protocolFee * userTakeRateOfProtocolFee
+     *         clientPercentOfProtocolFee = clientRate * _clientTakeRate
+     *         userPercentOfProtocolFee =  clientRate * (1 - _clientTakeRate)
+     *         clientFee = protocolFee * clientPercentOfProtocolFee
+     *         userSavings = protocolFee * userPercentOfProtocolFee
      * @param _clientTakeRate The percentage of the clientRate the client will receive each revenue-generating tx (100 = 100%).
      */
     function setClientTakeRate(uint256 _clientTakeRate) public payable {
@@ -76,9 +74,12 @@ contract FeeCollector is Ownable {
     }
 
     /**
-     * @notice Returns the amount discounted from the protocol fee by using the provided client.
+     * @notice Returns the amount discounted from the protocol fee for using the provided client,
+     *         and the amount of fees the client will receive.
      * @param _client The address where a client operator will receive protocols fees.
      * @param _maxFee The maximum amount of fees the protocol will collect.
+     * @return userSavings The amount of fees discounted from the protocol fee.
+     * @return clientFee The amount of fees the client will receive.
      */
     function getClientAllocations(address _client, uint256 _maxFee)
         public
@@ -87,8 +88,8 @@ contract FeeCollector is Ownable {
     {
         // 1. Calculate user savings
         uint256 userTakeRate = 100 - clientTakeRates[_client];
-        uint256 userPercentOfProtocolFee = (userTakeRate * clientRate) / 100;
-        userSavings = (userPercentOfProtocolFee * _maxFee) / 100;
+        uint256 userPercentOfProtocolFee = (userTakeRate * clientRate);
+        userSavings = (userPercentOfProtocolFee * _maxFee) / 1e4;
 
         // 2. Calculate client fee
         uint256 maxClientFee = (_maxFee * clientRate) / 100;

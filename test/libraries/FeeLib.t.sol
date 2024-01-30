@@ -56,7 +56,7 @@ contract FeeLibTest is Test, TokenUtils, FeeUtils {
     /// @dev
     // - This contract's token balance should decrease by: (max fee - user savings).
     // - The balance of the FeeCollector should increase by: (max fee - user savings).
-    // - The client's balance of the FeeCollector should increase by the correct amount.
+    // - The client's balance on the FeeCollector should increase by expectedFee.
     // - The above should be true for all supported tokens.
     // - The above should be true for fuzzed cAmts and clientTakeRates.
     function testFuzz_TakeProtocolFee(uint256 _cAmt, uint256 _clientTakeRate) public {
