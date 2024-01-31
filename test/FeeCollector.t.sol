@@ -276,6 +276,18 @@ contract FeeCollectorTest is Test, TokenUtils, FeeUtils {
     }
 
     /// @dev
+    // - The client take Rate cannot be > 100
+    function testFuzz_CannotSetClientTakeRateOutOfRange(uint256 _clientTakeRate) public {
+        // Assumptions
+        vm.assume(_clientTakeRate > 100);
+
+        // Act
+        vm.prank(TEST_CLIENT);
+        vm.expectRevert(FeeCollector.OutOfRange.selector);
+        feeCollector.setClientTakeRate(_clientTakeRate);
+    }
+
+    /// @dev
     // - The user savings should be correct according to what's calculated in expectations
     // - The user savings should be <= maxClientFee
     // - The above should be true for all fee tokens

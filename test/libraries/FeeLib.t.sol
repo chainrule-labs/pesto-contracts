@@ -85,7 +85,7 @@ contract FeeLibTest is Test, TokenUtils, FeeUtils {
 
             // Pre-act Data
             uint256 preFeeTokenBal = IERC20(feeToken).balanceOf(address(this));
-            uint256 preFeeCollectoreFeeTokenBal = IERC20(feeToken).balanceOf(FEE_COLLECTOR);
+            uint256 preFeeCollectorFeeTokenBal = IERC20(feeToken).balanceOf(FEE_COLLECTOR);
             uint256 preClientFeeTokenBal = IFeeCollector(FEE_COLLECTOR).balances(TEST_CLIENT, feeToken);
 
             // Act
@@ -93,12 +93,12 @@ contract FeeLibTest is Test, TokenUtils, FeeUtils {
 
             // Post-act Data
             uint256 postFeeTokenBal = IERC20(feeToken).balanceOf(address(this));
-            uint256 postFeeCollectoreFeeTokenBal = IERC20(feeToken).balanceOf(FEE_COLLECTOR);
+            uint256 postFeeCollectorFeeTokenBal = IERC20(feeToken).balanceOf(FEE_COLLECTOR);
             uint256 postClientFeeTokenBal = IFeeCollector(FEE_COLLECTOR).balances(TEST_CLIENT, feeToken);
 
             // Assertions
             assertEq(postFeeTokenBal, preFeeTokenBal - expectedFee);
-            assertEq(postFeeCollectoreFeeTokenBal, preFeeCollectoreFeeTokenBal + expectedFee);
+            assertEq(postFeeCollectorFeeTokenBal, preFeeCollectorFeeTokenBal + expectedFee);
             assertEq(postClientFeeTokenBal, preClientFeeTokenBal + expectedClientFee);
         }
     }
