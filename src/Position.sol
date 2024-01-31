@@ -17,7 +17,7 @@ contract Position is DebtService, SwapService {
     address public immutable B_TOKEN;
 
     // Events
-    event Short(uint256 cAmt, uint256 dAmt, uint256 bAmt);
+    event Add(uint256 cAmt, uint256 dAmt, uint256 bAmt);
     event Close(uint256 gains);
 
     constructor(address _owner, address _cToken, address _dToken, address _bToken)
@@ -52,7 +52,7 @@ contract Position is DebtService, SwapService {
         (, uint256 bAmt) = _swapExactInput(D_TOKEN, B_TOKEN, dAmt, _swapAmtOutMin, _poolFee);
 
         // 5. Emit event
-        emit Short(cAmtNet, dAmt, bAmt);
+        emit Add(cAmtNet, dAmt, bAmt);
     }
 
     /**

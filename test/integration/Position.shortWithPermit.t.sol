@@ -56,7 +56,7 @@ contract PositionShortPermitTest is Test, TokenUtils, DebtUtils {
     address public owner;
 
     // Events
-    event Short(uint256 cAmt, uint256 dAmt, uint256 bAmt);
+    event Add(uint256 cAmt, uint256 dAmt, uint256 bAmt);
 
     function setUp() public {
         // Setup: use mainnet fork
