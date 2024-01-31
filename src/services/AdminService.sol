@@ -8,7 +8,7 @@ import { SafeTransferLib, ERC20 } from "solmate/utils/SafeTransferLib.sol";
 /// @title Position Admin
 /// @author Chain Rule, LLC
 /// @notice Defines logic that Position and DebtService both need access to.
-contract PositionAdmin {
+contract AdminService {
     // Immutables: no SLOAD to save gas
     address public immutable OWNER;
 

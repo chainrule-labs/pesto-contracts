@@ -7,7 +7,7 @@ import { VmSafe } from "forge-std/Vm.sol";
 
 // Local Imports
 import { PositionFactory } from "src/PositionFactory.sol";
-import { PositionAdmin } from "src/PositionAdmin.sol";
+import { AdminService } from "src/services/AdminService.sol";
 import {
     Assets,
     CONTRACT_DEPLOYER,
@@ -119,8 +119,8 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
 
             // Act
             vm.prank(_sender);
-            vm.expectRevert(PositionAdmin.Unauthorized.selector);
-            IPosition(addr).short(cAmt, ltv, 0, 3000, TEST_CLIENT);
+            vm.expectRevert(AdminService.Unauthorized.selector);
+            IPosition(addr).add(cAmt, ltv, 0, 3000, TEST_CLIENT);
 
             // Revert to snapshot
             vm.revertTo(id);
@@ -151,8 +151,8 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
 
             // Act
             vm.prank(_sender);
-            vm.expectRevert(PositionAdmin.Unauthorized.selector);
-            IPosition(positions[i].addr).shortWithPermit(cAmt, ltv, 0, 3000, TEST_CLIENT, permitTimestamp, v, r, s);
+            vm.expectRevert(AdminService.Unauthorized.selector);
+            IPosition(positions[i].addr).addWithPermit(cAmt, ltv, 0, 3000, TEST_CLIENT, permitTimestamp, v, r, s);
 
             // Revert to snapshot
             vm.revertTo(id);
@@ -180,12 +180,12 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
             _fund(owner, positions[i].cToken, cAmt);
             vm.startPrank(owner);
             IERC20(positions[i].cToken).approve(addr, cAmt);
-            IPosition(addr).short(cAmt, ltv, 0, 3000, TEST_CLIENT);
+            IPosition(addr).add(cAmt, ltv, 0, 3000, TEST_CLIENT);
             vm.stopPrank();
 
             // Act
             vm.prank(_sender);
-            vm.expectRevert(PositionAdmin.Unauthorized.selector);
+            vm.expectRevert(AdminService.Unauthorized.selector);
             IPosition(addr).close(3000, false, 0, WITHDRAW_BUFFER);
 
             // Revert to snapshot

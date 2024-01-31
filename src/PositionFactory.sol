@@ -23,6 +23,9 @@ contract PositionFactory is Ownable {
     error Unauthorized();
     error PositionExists();
 
+    // Events
+    event PositionCreated(address indexed owner, address indexed position);
+
     constructor(address _owner) Ownable(_owner) {
         if (msg.sender != CONTRACT_DEPLOYER) revert Unauthorized();
     }
@@ -44,6 +47,8 @@ contract PositionFactory is Ownable {
 
         positionsLookup[msg.sender].push(position);
         positions[msg.sender][_cToken][_dToken][_bToken] = position;
+
+        emit PositionCreated(msg.sender, position);
     }
 
     /**

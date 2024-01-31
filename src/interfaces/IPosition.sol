@@ -38,12 +38,13 @@ interface IPosition {
      * @param _poolFee The fee of the Uniswap pool.
      * @param _client The address of the client operator. Use address(0) if not using a client.
      */
-    function short(uint256 _cAmt, uint256 _ltv, uint256 _swapAmtOutMin, uint24 _poolFee, address _client)
+    function add(uint256 _cAmt, uint256 _ltv, uint256 _swapAmtOutMin, uint24 _poolFee, address _client)
         external
         payable;
 
     /**
      * @notice Adds to this contract's short position with permit, obviating the need for a separate approve tx.
+     *         This function can only be used for ERC-2612-compliant tokens.
      * @param _cAmt The amount of collateral token to be supplied for this transaction-specific loan (units: C_DECIMALS).
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
@@ -54,7 +55,7 @@ interface IPosition {
      * @param _r The R parameter of ERC712 signature for the permit.
      * @param _s The S parameter of ERC712 signature for the permit.
      */
-    function shortWithPermit(
+    function addWithPermit(
         uint256 _cAmt,
         uint256 _ltv,
         uint256 _swapAmtOutMin,
@@ -84,7 +85,8 @@ interface IPosition {
     function addCollateral(uint256 _cAmt) external payable;
 
     /**
-     * @notice Increases the collateral amount for this contract's loan with permit, obviating the need for a separate approve tx.
+     * @notice Increases the collateral amount for this contract's loan with permit,
+     *         obviating the need for a separate approve tx. This function can only be used for ERC-2612-compliant tokens.
      * @param _cAmt The amount of collateral to be supplied (units: C_DECIMALS).
      * @param _deadline The expiration timestamp of the permit.
      * @param _v The V parameter of ERC712 signature for the permit.
@@ -105,7 +107,7 @@ interface IPosition {
 
     /**
      * @notice Repays any outstanding debt to Aave and transfers remaining collateral from Aave to owner,
-     *         with permit, obviating the need for a separate approve tx.
+     *         with permit, obviating the need for a separate approve tx. This function can only be used for ERC-2612-compliant tokens.
      * @param _dAmt The amount of debt token to repay to Aave (units: D_DECIMALS).
      *              To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
      * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (default = 100_000, units: 8 decimals).
