@@ -2,7 +2,7 @@
 pragma solidity ^0.8.21;
 
 // Local Imports
-import { PositionAdmin } from "src/PositionAdmin.sol";
+import { AdminService } from "src/services/AdminService.sol";
 import { SafeTransferLib, ERC20 } from "solmate/utils/SafeTransferLib.sol";
 import { IPool } from "src/interfaces/aave/IPool.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
@@ -13,7 +13,7 @@ import { IERC20Metadata } from "src/interfaces/token/IERC20Metadata.sol";
 /// @title DebtService
 /// @author Chain Rule, LLC
 /// @notice Manages all debt-related interactions
-contract DebtService is PositionAdmin {
+contract DebtService is AdminService {
     // Constants: no SLOAD to save gas
     address private constant AAVE_POOL = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
     address private constant AAVE_ORACLE = 0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7;
@@ -26,7 +26,7 @@ contract DebtService is PositionAdmin {
     address public immutable C_TOKEN;
     address public immutable D_TOKEN;
 
-    constructor(address _owner, address _cToken, address _dToken) PositionAdmin(_owner) {
+    constructor(address _owner, address _cToken, address _dToken) AdminService(_owner) {
         C_TOKEN = _cToken;
         D_TOKEN = _dToken;
         C_DECIMALS = IERC20Metadata(_cToken).decimals();
@@ -128,6 +128,7 @@ contract DebtService is PositionAdmin {
 
     /**
      * @notice Increases the collateral amount for this contract's loan with permit, obviating the need for a separate approve tx.
+     *         This function can only be used for ERC-2612-compliant tokens.
      * @param _cAmt The amount of collateral to be supplied (units: C_DECIMALS).
      * @param _deadline The expiration timestamp of the permit.
      * @param _v The V parameter of ERC712 signature for the permit.
@@ -162,7 +163,7 @@ contract DebtService is PositionAdmin {
 
     /**
      * @notice Repays any outstanding debt to Aave and transfers remaining collateral from Aave to owner,
-     *         with permit, obviating the need for a separate approve tx.
+     *         with permit, obviating the need for a separate approve tx. This function can only be used for ERC-2612-compliant tokens.
      * @param _dAmt The amount of debt token to repay to Aave (units: D_DECIMALS).
      *              To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
      * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (default = 100_000, units: 8 decimals).

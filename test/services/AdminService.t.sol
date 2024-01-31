@@ -6,13 +6,13 @@ import { Test } from "forge-std/Test.sol";
 
 // Local Imports
 import { PositionFactory } from "src/PositionFactory.sol";
-import { PositionAdmin } from "src/PositionAdmin.sol";
+import { AdminService } from "src/services/AdminService.sol";
 import { Assets, CONTRACT_DEPLOYER } from "test/common/Constants.t.sol";
 import { TokenUtils } from "test/common/utils/TokenUtils.t.sol";
 import { IPosition } from "src/interfaces/IPosition.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
-contract PositionAdminTest is Test, TokenUtils {
+contract AdminServiceTest is Test, TokenUtils {
     /* solhint-disable func-name-mixedcase */
 
     // Test contracts
@@ -89,7 +89,7 @@ contract PositionAdminTest is Test, TokenUtils {
 
         // Act: attempt to extract native
         vm.prank(_sender);
-        vm.expectRevert(PositionAdmin.Unauthorized.selector);
+        vm.expectRevert(AdminService.Unauthorized.selector);
         IPosition(positionAddr).extractNative();
     }
 
@@ -144,7 +144,7 @@ contract PositionAdminTest is Test, TokenUtils {
 
             // Act
             vm.prank(_sender);
-            vm.expectRevert(PositionAdmin.Unauthorized.selector);
+            vm.expectRevert(AdminService.Unauthorized.selector);
             IPosition(positionAddr).extractERC20(supportedAssets[i]);
         }
     }

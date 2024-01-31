@@ -150,7 +150,7 @@ contract FeeCollectorShortTest is Test, TokenUtils, FeeUtils, DebtUtils {
             assertEq(prePositionATokenBal, 0);
 
             // Act: increase short position
-            IPosition(positionAddr).short(_cAmt, 50, 0, 3000, TEST_CLIENT);
+            IPosition(positionAddr).add(_cAmt, 50, 0, 3000, TEST_CLIENT);
 
             // Post-act balances
             feeCollectorBalances.postFeeTokenBal = IERC20(cToken).balanceOf(FEE_COLLECTOR);
@@ -207,7 +207,7 @@ contract FeeCollectorShortTest is Test, TokenUtils, FeeUtils, DebtUtils {
             assertEq(prePositionATokenBal, 0);
 
             // Act: increase short position
-            IPosition(positionAddr).short(_cAmt, 50, 0, 3000, address(0));
+            IPosition(positionAddr).add(_cAmt, 50, 0, 3000, address(0));
 
             // Post-act balances
             feeCollectorBalances.postFeeTokenBal = IERC20(cToken).balanceOf(FEE_COLLECTOR);

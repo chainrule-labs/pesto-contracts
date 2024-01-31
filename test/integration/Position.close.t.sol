@@ -142,7 +142,7 @@ contract PositionCloseTest is Test, TokenUtils, DebtUtils {
             uint256 ltv = 50;
             _fund(owner, positions[i].cToken, cAmt);
             IERC20(positions[i].cToken).approve(addr, cAmt);
-            IPosition(addr).short(cAmt, ltv, 0, 3000, TEST_CLIENT);
+            IPosition(addr).add(cAmt, ltv, 0, 3000, TEST_CLIENT);
 
             // Get pre-act balances
             contractBalances.preBToken = IERC20(positions[i].bToken).balanceOf(addr);
@@ -225,7 +225,7 @@ contract PositionCloseTest is Test, TokenUtils, DebtUtils {
             uint256 ltv = 50;
             _fund(owner, positions[i].cToken, cAmt);
             IERC20(positions[i].cToken).approve(addr, cAmt);
-            IPosition(addr).short(cAmt, ltv, 0, 3000, TEST_CLIENT);
+            IPosition(addr).add(cAmt, ltv, 0, 3000, TEST_CLIENT);
 
             // Get pre-act balances
             contractBalances.preBToken = IERC20(positions[i].bToken).balanceOf(addr);
@@ -316,7 +316,7 @@ contract PositionCloseTest is Test, TokenUtils, DebtUtils {
             uint256 ltv = 50;
             _fund(owner, positions[i].cToken, cAmt);
             IERC20(positions[i].cToken).approve(addr, cAmt);
-            IPosition(addr).short(cAmt, ltv, 0, 3000, TEST_CLIENT);
+            IPosition(addr).add(cAmt, ltv, 0, 3000, TEST_CLIENT);
 
             // Get pre-act balances
             contractBalances.preBToken = IERC20(positions[i].bToken).balanceOf(addr);
@@ -384,7 +384,7 @@ contract PositionCloseTest is Test, TokenUtils, DebtUtils {
             uint256 ltv = 50;
             _fund(owner, positions[i].cToken, cAmt);
             IERC20(positions[i].cToken).approve(addr, cAmt);
-            IPosition(addr).short(cAmt, ltv, 0, 3000, TEST_CLIENT);
+            IPosition(addr).add(cAmt, ltv, 0, 3000, TEST_CLIENT);
 
             // Get pre-act balances
             contractBalances.preVDToken = _getVariableDebtTokenBalance(addr, positions[i].dToken);

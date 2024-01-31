@@ -17,7 +17,7 @@ contract Position is DebtService, SwapService {
     address public immutable B_TOKEN;
 
     // Events
-    event Short(uint256 cAmt, uint256 dAmt, uint256 bAmt);
+    event Add(uint256 cAmt, uint256 dAmt, uint256 bAmt);
     event Close(uint256 gains);
 
     constructor(address _owner, address _cToken, address _dToken, address _bToken)
@@ -34,7 +34,7 @@ contract Position is DebtService, SwapService {
      * @param _poolFee The fee of the Uniswap pool.
      * @param _client The address of the client operator. Use address(0) if not using a client.
      */
-    function short(uint256 _cAmt, uint256 _ltv, uint256 _swapAmtOutMin, uint24 _poolFee, address _client)
+    function add(uint256 _cAmt, uint256 _ltv, uint256 _swapAmtOutMin, uint24 _poolFee, address _client)
         public
         payable
         onlyOwner
@@ -52,11 +52,12 @@ contract Position is DebtService, SwapService {
         (, uint256 bAmt) = _swapExactInput(D_TOKEN, B_TOKEN, dAmt, _swapAmtOutMin, _poolFee);
 
         // 5. Emit event
-        emit Short(cAmtNet, dAmt, bAmt);
+        emit Add(cAmtNet, dAmt, bAmt);
     }
 
     /**
      * @notice Adds to this contract's short position with permit, obviating the need for a separate approve tx.
+     *         This function can only be used for ERC-2612-compliant tokens.
      * @param _cAmt The amount of collateral token to be supplied for this transaction-specific loan (units: C_DECIMALS).
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
@@ -67,7 +68,7 @@ contract Position is DebtService, SwapService {
      * @param _r The R parameter of ERC712 signature for the permit.
      * @param _s The S parameter of ERC712 signature for the permit.
      */
-    function shortWithPermit(
+    function addWithPermit(
         uint256 _cAmt,
         uint256 _ltv,
         uint256 _swapAmtOutMin,
@@ -82,7 +83,7 @@ contract Position is DebtService, SwapService {
         IERC20Permit(C_TOKEN).permit(msg.sender, address(this), _cAmt, _deadline, _v, _r, _s);
 
         // 2. Short
-        short(_cAmt, _ltv, _swapAmtOutMin, _poolFee, _client);
+        add(_cAmt, _ltv, _swapAmtOutMin, _poolFee, _client);
     }
 
     /**

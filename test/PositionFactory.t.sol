@@ -25,6 +25,9 @@ contract PositionFactoryTest is Test, TokenUtils {
     // Errors
     error OwnableUnauthorizedAccount(address account);
 
+    // Events
+    event PositionCreated(address indexed owner, address indexed position);
+
     function setUp() public {
         // Setup: use mainnet fork
         mainnetFork = vm.createFork(vm.envString("RPC_URL"));
@@ -74,6 +77,9 @@ contract PositionFactoryTest is Test, TokenUtils {
                 if (j != i) {
                     for (uint256 k; k < supportedAssets.length; k++) {
                         if (k != j) {
+                            vm.expectEmit(true, false, false, false, address(positionFactory));
+                            emit PositionCreated(positionOwner, address(0));
+
                             position = positionFactory.createPosition(
                                 supportedAssets[i], supportedAssets[j], supportedAssets[k]
                             );

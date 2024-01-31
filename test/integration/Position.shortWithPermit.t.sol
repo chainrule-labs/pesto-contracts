@@ -56,7 +56,7 @@ contract PositionShortPermitTest is Test, TokenUtils, DebtUtils {
     address public owner;
 
     // Events
-    event Short(uint256 cAmt, uint256 dAmt, uint256 bAmt);
+    event Add(uint256 cAmt, uint256 dAmt, uint256 bAmt);
 
     function setUp() public {
         // Setup: use mainnet fork
@@ -148,7 +148,7 @@ contract PositionShortPermitTest is Test, TokenUtils, DebtUtils {
             // Act
             vm.recordLogs();
             vm.prank(owner);
-            IPosition(positions[i].addr).shortWithPermit(_cAmt, _ltv, 0, 3000, TEST_CLIENT, permitTimestamp, v, r, s);
+            IPosition(positions[i].addr).addWithPermit(_cAmt, _ltv, 0, 3000, TEST_CLIENT, permitTimestamp, v, r, s);
             VmSafe.Log[] memory entries = vm.getRecordedLogs();
 
             // Post-act balances

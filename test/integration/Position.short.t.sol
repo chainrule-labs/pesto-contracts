@@ -37,7 +37,7 @@ contract PositionShortTest is Test, TokenUtils, DebtUtils {
     address public owner = address(this);
 
     // Events
-    event Short(uint256 cAmt, uint256 dAmt, uint256 bAmt);
+    event Add(uint256 cAmt, uint256 dAmt, uint256 bAmt);
 
     function setUp() public {
         // Setup: use mainnet fork
@@ -125,7 +125,7 @@ contract PositionShortTest is Test, TokenUtils, DebtUtils {
 
             // Act
             vm.recordLogs();
-            IPosition(addr).short(_cAmt, _ltv, 0, 3000, TEST_CLIENT);
+            IPosition(addr).add(_cAmt, _ltv, 0, 3000, TEST_CLIENT);
             VmSafe.Log[] memory entries = vm.getRecordedLogs();
 
             // Post-act balances

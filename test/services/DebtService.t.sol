@@ -6,7 +6,7 @@ import { Test } from "forge-std/Test.sol";
 import { VmSafe } from "forge-std/Vm.sol";
 
 // Local Imports
-import { PositionAdmin } from "src/PositionAdmin.sol";
+import { AdminService } from "src/services/AdminService.sol";
 import { DebtServiceHarness } from "test/harness/DebtServiceHarness.t.sol";
 import { DebtUtils } from "test/common/utils/DebtUtils.t.sol";
 import { TokenUtils } from "test/common/utils/TokenUtils.t.sol";
@@ -352,7 +352,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
 
             // Act
             vm.prank(_sender);
-            vm.expectRevert(PositionAdmin.Unauthorized.selector);
+            vm.expectRevert(AdminService.Unauthorized.selector);
             debtServices[i].addCollateral(_cAmt);
         }
     }
@@ -428,7 +428,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
 
             // Act
             vm.prank(_sender);
-            vm.expectRevert(PositionAdmin.Unauthorized.selector);
+            vm.expectRevert(AdminService.Unauthorized.selector);
             debtServices[i].repayAfterClose(_payment, WITHDRAW_BUFFER);
         }
     }
@@ -537,7 +537,7 @@ contract DebtServicePermitTest is Test, DebtUtils, TokenUtils {
 
             // Act
             vm.prank(_sender);
-            vm.expectRevert(PositionAdmin.Unauthorized.selector);
+            vm.expectRevert(AdminService.Unauthorized.selector);
             debtServices[i].addCollateralWithPermit(_cAmt, permitTimestamp, v, r, s);
         }
     }
@@ -611,7 +611,7 @@ contract DebtServicePermitTest is Test, DebtUtils, TokenUtils {
 
             // Act
             vm.prank(_sender);
-            vm.expectRevert(PositionAdmin.Unauthorized.selector);
+            vm.expectRevert(AdminService.Unauthorized.selector);
             debtServices[i].repayAfterCloseWithPermit(_payment, WITHDRAW_BUFFER, permitTimestamp, v, r, s);
         }
     }
