@@ -35,16 +35,40 @@ interface IFeeCollector {
 
     /**
      * @notice Collects fees from Position contracts when collateral is added.
-     * @param _client The address, controlled by client operators, for receiving protocol fees.
+     * @param _client The address where a client operator will receive protocols fees.
      * @param _token The token to collect fees in (the collateral token of the calling Position contract).
      * @param _amt The total amount of fees to collect.
      */
-    function collectFees(address _client, address _token, uint256 _amt) external payable;
+    function collectFees(address _client, address _token, uint256 _amt, uint256 _clientFee) external payable;
     /**
      * @notice Withdraw collected fees from this contract.
      * @param _token The token address to withdraw.
      */
     function clientWithdraw(address _token) external payable;
+
+    /**
+     * @notice Allows clients to set the percentage of the clientRate they will receive each revenue-generating tx.
+     *         Amounts less than 100 will give the calling client's users a protocol fee discount:
+     *         clientPercentOfProtocolFee = clientRate * _clientTakeRate
+     *         userPercentOfProtocolFee =  clientRate * (1 - _clientTakeRate)
+     *         clientFee = protocolFee * clientPercentOfProtocolFee
+     *         userSavings = protocolFee * userPercentOfProtocolFee
+     * @param _clientTakeRate The percentage of the clientRate the client will receive each revenue-generating tx (100 = 100%).
+     */
+    function setClientTakeRate(uint256 _clientTakeRate) external payable;
+
+    /**
+     * @notice Returns the amount discounted from the protocol fee for using the provided client,
+     *         and the amount of fees the client will receive.
+     * @param _client The address where a client operator will receive protocols fees.
+     * @param _maxFee The maximum amount of fees the protocol will collect.
+     * @return userSavings The amount of fees discounted from the protocol fee.
+     * @return clientFee The amount of fees the client will receive.
+     */
+    function getClientAllocations(address _client, uint256 _maxFee)
+        external
+        view
+        returns (uint256 userSavings, uint256 clientFee);
 
     /* ****************************************************************************
     **

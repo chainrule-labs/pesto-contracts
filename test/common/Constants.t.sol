@@ -23,7 +23,7 @@ uint256 constant PROFIT_PERCENT = 25;
 uint256 constant REPAY_PERCENT = 75;
 uint256 constant WITHDRAW_BUFFER = 100_000;
 uint256 constant REPAY_BUFFER = 2;
-uint256 constant PROTOCOL_FEE = 3;
+uint256 constant PROTOCOL_FEE_RATE = 3;
 uint256 constant CLIENT_RATE = 30;
 
 contract Assets {

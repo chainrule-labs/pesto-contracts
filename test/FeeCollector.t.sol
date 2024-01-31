@@ -9,9 +9,10 @@ import { PositionFactory } from "src/PositionFactory.sol";
 import { FeeCollector } from "src/FeeCollector.sol";
 import { Assets, CONTRACT_DEPLOYER, TEST_CLIENT, CLIENT_RATE, USDC, WETH, WBTC } from "test/common/Constants.t.sol";
 import { TokenUtils } from "test/common/utils/TokenUtils.t.sol";
+import { FeeUtils } from "test/common/utils/FeeUtils.t.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
-contract FeeCollectorTest is Test, TokenUtils {
+contract FeeCollectorTest is Test, TokenUtils, FeeUtils {
     /* solhint-disable func-name-mixedcase */
 
     struct TestPosition {
@@ -106,7 +107,7 @@ contract FeeCollectorTest is Test, TokenUtils {
             uint256 preClientFeeBalance = feeCollector.balances(TEST_CLIENT, feeToken);
 
             // Act: collect fees
-            feeCollector.collectFees(TEST_CLIENT, feeToken, _protocolFee);
+            feeCollector.collectFees(TEST_CLIENT, feeToken, _protocolFee, clientFee);
 
             // Post-act balances
             uint256 postContractBalance = IERC20(feeToken).balanceOf(feeCollectorAddr);
@@ -143,7 +144,8 @@ contract FeeCollectorTest is Test, TokenUtils {
             uint256 preTotalClientBalances = feeCollector.totalClientBalances(feeToken);
 
             // Act: collect fees
-            feeCollector.collectFees(address(0), feeToken, _protocolFee);
+            uint256 clientFee = (_protocolFee * CLIENT_RATE) / 100;
+            feeCollector.collectFees(address(0), feeToken, _protocolFee, clientFee);
 
             // Post-act balances
             uint256 postContractBalance = IERC20(feeToken).balanceOf(feeCollectorAddr);
@@ -175,7 +177,8 @@ contract FeeCollectorTest is Test, TokenUtils {
             IERC20(feeToken).approve(feeCollectorAddr, _amount);
 
             // Collect fees
-            feeCollector.collectFees(TEST_CLIENT, feeToken, _amount);
+            uint256 clientFee = (_amount * CLIENT_RATE) / 100;
+            feeCollector.collectFees(TEST_CLIENT, feeToken, _amount, clientFee);
 
             // Pre-act balances
             uint256 preContractBalance = IERC20(feeToken).balanceOf(feeCollectorAddr);
@@ -250,6 +253,77 @@ contract FeeCollectorTest is Test, TokenUtils {
     }
 
     /// @dev
+    // - The current client take rate should be updated to new client take rate
+    function testFuzz_SetClientTakeRate(uint256 _clientTakeRate) public {
+        // Assumptions
+        _clientTakeRate = bound(_clientTakeRate, 0, 100);
+
+        // Pre-act data
+        uint256 preClientTakeRate = feeCollector.clientTakeRates(TEST_CLIENT);
+
+        // Assertions
+        assertEq(preClientTakeRate, 0);
+
+        // Act
+        vm.prank(TEST_CLIENT);
+        feeCollector.setClientTakeRate(_clientTakeRate);
+
+        // Post-act data
+        uint256 postClientTakeRate = feeCollector.clientTakeRates(TEST_CLIENT);
+
+        // Assertions
+        assertEq(postClientTakeRate, _clientTakeRate);
+    }
+
+    /// @dev
+    // - The client take Rate cannot be > 100
+    function testFuzz_CannotSetClientTakeRateOutOfRange(uint256 _clientTakeRate) public {
+        // Assumptions
+        vm.assume(_clientTakeRate > 100);
+
+        // Act
+        vm.prank(TEST_CLIENT);
+        vm.expectRevert(FeeCollector.OutOfRange.selector);
+        feeCollector.setClientTakeRate(_clientTakeRate);
+    }
+
+    /// @dev
+    // - The user savings should be correct according to what's calculated in expectations
+    // - The user savings should be <= maxClientFee
+    // - The above should be true for all fee tokens
+    // - The above should be true for fuzzed _maxFee and _clientTakeRate
+    function testFuzz_GetClientAllocations(uint256 _maxFee, uint256 _clientTakeRate) public {
+        for (uint256 i; i < positions.length; i++) {
+            // Test Variables
+            address feeToken = positions[i].cToken;
+
+            // Bound fuzzed variables
+            _maxFee = bound(_maxFee, assets.minCAmts(feeToken), assets.maxCAmts(feeToken));
+            _clientTakeRate = bound(_clientTakeRate, 0, 100);
+
+            // Setup
+            vm.prank(TEST_CLIENT);
+            feeCollector.setClientTakeRate(_clientTakeRate);
+
+            // Expectations
+            uint256 maxClientFee = (CLIENT_RATE * _maxFee) / 100;
+            uint256 userTakeRate = 100 - _clientTakeRate;
+            uint256 expectedClientFee = (_clientTakeRate * CLIENT_RATE * _maxFee) / 1e4;
+            uint256 expectedUserSavings = (userTakeRate * CLIENT_RATE * _maxFee) / 1e4;
+
+            // Act
+            (uint256 userSavings, uint256 clientFee) = feeCollector.getClientAllocations(TEST_CLIENT, _maxFee);
+
+            // Assertions
+            assertApproxEqAbs(userSavings, expectedUserSavings, 1);
+            assertApproxEqAbs(clientFee, expectedClientFee, 1);
+            assertEq(userSavings + clientFee, maxClientFee);
+            assertLe(userSavings, maxClientFee);
+            assertLe(clientFee, maxClientFee);
+        }
+    }
+
+    /// @dev
     // - The FeeCollector's native balance should decrease by the amount transferred.
     // - The owner's native balance should increase by the amount transferred.
     function testFuzz_ExtractNative(uint256 _amount) public {
@@ -310,7 +384,8 @@ contract FeeCollectorTest is Test, TokenUtils {
             IERC20(token).approve(feeCollectorAddr, _amount);
 
             // Collect fees
-            feeCollector.collectFees(TEST_CLIENT, token, _amount);
+            uint256 clientFee = (_amount * CLIENT_RATE) / 100;
+            feeCollector.collectFees(TEST_CLIENT, token, _amount, clientFee);
 
             // Pre-act balances
             uint256 preContractTokenBalance = IERC20(token).balanceOf(feeCollectorAddr);
@@ -353,7 +428,8 @@ contract FeeCollectorTest is Test, TokenUtils {
             IERC20(token).approve(feeCollectorAddr, _amount);
 
             // Collect fees
-            feeCollector.collectFees(TEST_CLIENT, token, _amount);
+            uint256 clientFee = (_amount * CLIENT_RATE) / 100;
+            feeCollector.collectFees(TEST_CLIENT, token, _amount, clientFee);
 
             // Act: attempt to extract ERC20 token
             vm.prank(_sender);

@@ -18,14 +18,20 @@ The following outlines principles for core protocol funcitonality.
 
 Logic:
 
--   All caught up!🙂
+-   [ ] Move PositionAdmin to services, rename
+-   [ ] Consider changing short() to add()
+-   [ ] Emit event when a position is created (get clear on whether or not an implicit event is emitted when creating a contract)
+-   [ ] Add comment in permit functions specifying that only ERC-2612 compliant tokens can use this functionality.
 
 Tests:
 
--   [x] Separate integration tests from unit tests (separate PR)
--   [x] Move all utils to test/common/
+-   [x] Invariant: netProtocolFees = 1 - clientRate _ sum(clientTakeRate_i _ maxFee_i) ➡️ Test that netProtocolFees >= (1 - clientRate) \* totalBal
+-   [x] Integration: Test that the sum of all calculated client fees is equal to totalClientBalances
+-   [x] Unit test setClientTakeRate()
+-   [x] Unit test getClientAllocations()
+-   [x] Unit test FeeLib via Test Harness
+-   [x] Account for userSavings in all affected FeeCollector unit and integration tests
 
 Considerations:
 
--   [ ] Consider emitting Position events through another contract
--   [ ] Consider adding a function to short with signatures, via `ERCRecover`.
+-   None at the moment🙂

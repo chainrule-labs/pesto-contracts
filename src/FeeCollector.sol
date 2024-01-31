@@ -15,6 +15,7 @@ contract FeeCollector is Ownable {
 
     // Storage
     uint256 public clientRate;
+    mapping(address => uint256) public clientTakeRates;
     mapping(address => uint256) public totalClientBalances;
     mapping(address => mapping(address => uint256)) public balances;
 
@@ -28,19 +29,18 @@ contract FeeCollector is Ownable {
 
     /**
      * @notice Collects fees from Position contracts when collateral is added.
-     * @param _client The address, controlled by client operators, for receiving protocol fees.
+     * @param _client The address where a client operator will receive protocols fees.
      * @param _token The token to collect fees in (the collateral token of the calling Position contract).
      * @param _amt The total amount of fees to collect.
      */
-    function collectFees(address _client, address _token, uint256 _amt) external payable {
+    function collectFees(address _client, address _token, uint256 _amt, uint256 _clientFee) external payable {
         // 1. Transfer tokens to this contract
         SafeTransferLib.safeTransferFrom(ERC20(_token), msg.sender, address(this), _amt);
 
         // 2. Update client balances
         if (_client != address(0)) {
-            uint256 clientFee = (_amt * clientRate) / 100;
-            balances[_client][_token] += clientFee;
-            totalClientBalances[_token] += clientFee;
+            balances[_client][_token] += _clientFee;
+            totalClientBalances[_token] += _clientFee;
         }
     }
 
@@ -58,6 +58,49 @@ contract FeeCollector is Ownable {
         // 2. Transfer tokens to msg.sender
         SafeTransferLib.safeTransfer(ERC20(_token), msg.sender, withdrawAmt);
     }
+
+    /**
+     * @notice Allows clients to set the percentage of the clientRate they will receive each revenue-generating tx.
+     *         Amounts less than 100 will give the calling client's users a protocol fee discount:
+     *         clientPercentOfProtocolFee = clientRate * _clientTakeRate
+     *         userPercentOfProtocolFee =  clientRate * (1 - _clientTakeRate)
+     *         clientFee = protocolFee * clientPercentOfProtocolFee
+     *         userSavings = protocolFee * userPercentOfProtocolFee
+     * @param _clientTakeRate The percentage of the clientRate the client will receive each revenue-generating tx (100 = 100%).
+     */
+    function setClientTakeRate(uint256 _clientTakeRate) public payable {
+        if (_clientTakeRate > 100) revert OutOfRange();
+        clientTakeRates[msg.sender] = _clientTakeRate;
+    }
+
+    /**
+     * @notice Returns the amount discounted from the protocol fee for using the provided client,
+     *         and the amount of fees the client will receive.
+     * @param _client The address where a client operator will receive protocols fees.
+     * @param _maxFee The maximum amount of fees the protocol will collect.
+     * @return userSavings The amount of fees discounted from the protocol fee.
+     * @return clientFee The amount of fees the client will receive.
+     */
+    function getClientAllocations(address _client, uint256 _maxFee)
+        public
+        view
+        returns (uint256 userSavings, uint256 clientFee)
+    {
+        // 1. Calculate user savings
+        uint256 userTakeRate = 100 - clientTakeRates[_client];
+        uint256 userPercentOfProtocolFee = (userTakeRate * clientRate);
+        userSavings = (userPercentOfProtocolFee * _maxFee) / 1e4;
+
+        // 2. Calculate client fee
+        uint256 maxClientFee = (_maxFee * clientRate) / 100;
+        clientFee = maxClientFee - userSavings;
+    }
+
+    /* ****************************************************************************
+    **
+    **  Admin Functions
+    **
+    ******************************************************************************/
 
     /**
      * @notice Allows owner to set client rate.

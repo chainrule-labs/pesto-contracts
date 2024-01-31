@@ -23,7 +23,9 @@ interface IPositionFactory {
         returns (address);
 
     /**
-     * @notice Returns a list of contract addresses for the given owner.
+     * @notice Returns an indexed contract addresses from the list of contracts for the given owner.
+     *         Direct external calls to this mapping require an index to retrieve
+     *         a specific address. To get the full array, call getPositions().
      */
     function positionsLookup(address _owner) external view returns (address[] memory);
 
