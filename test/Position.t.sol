@@ -8,12 +8,14 @@ import { VmSafe } from "forge-std/Vm.sol";
 // Local Imports
 import { PositionFactory } from "src/PositionFactory.sol";
 import { AdminService } from "src/services/AdminService.sol";
+import { Position } from "src/Position.sol";
 import {
     Assets,
     CONTRACT_DEPLOYER,
     DAI,
     FEE_COLLECTOR,
     TEST_CLIENT,
+    TEST_POOL_FEE,
     USDC,
     WITHDRAW_BUFFER
 } from "test/common/Constants.t.sol";
@@ -36,6 +38,7 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
     PositionFactory public positionFactory;
     Assets public assets;
     TestPosition[] public positions;
+    TestPosition[] public diffCTokenBTokenPositions;
 
     // Test Storage
     VmSafe.Wallet public wallet;
@@ -85,6 +88,14 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
                 }
             }
         }
+
+        // Filter for positions where cToken != bToken and populate diffCTokenBTokenPositions
+        for (uint256 i = 0; i < positions.length; i++) {
+            TestPosition memory currentPosition = positions[i];
+            if (currentPosition.cToken != currentPosition.bToken) {
+                diffCTokenBTokenPositions.push(currentPosition);
+            }
+        }
     }
 
     /// @dev
@@ -95,7 +106,7 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
 
     /// @dev
     // - It should revert with Unauthorized() error when called by an unauthorized sender.
-    function testFuzz_CannotShort(address _sender) public {
+    function testFuzz_CannotAdd(address _sender) public {
         // Setup
         uint256 ltv = 60;
 
@@ -120,7 +131,35 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
             // Act
             vm.prank(_sender);
             vm.expectRevert(AdminService.Unauthorized.selector);
-            IPosition(addr).add(cAmt, ltv, 0, 3000, TEST_CLIENT);
+            IPosition(addr).add(cAmt, ltv, 0, TEST_POOL_FEE, TEST_CLIENT);
+
+            // Revert to snapshot
+            vm.revertTo(id);
+        }
+    }
+
+    /// @dev
+    // - It should revert with TokenConflict() error when cToken != bToken.
+    function test_CannotAddLeverageTokenConflict() public {
+        // Setup
+        uint256 ltv = 60;
+
+        // Take snapshot
+        uint256 id = vm.snapshot();
+
+        for (uint256 i; i < diffCTokenBTokenPositions.length; i++) {
+            // Test variables
+            address addr = diffCTokenBTokenPositions[i].addr;
+            address bToken = diffCTokenBTokenPositions[i].bToken;
+            uint256 bAmt = assets.maxCAmts(bToken);
+
+            // Fund contract with bToken
+            _fund(addr, bToken, bAmt);
+
+            // Act
+            vm.prank(owner);
+            vm.expectRevert(Position.TokenConflict.selector);
+            IPosition(addr).addLeverage(ltv, 0, TEST_POOL_FEE, TEST_CLIENT);
 
             // Revert to snapshot
             vm.revertTo(id);
@@ -129,7 +168,41 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
 
     /// @dev
     // - It should revert with Unauthorized() error when called by an unauthorized sender.
-    function testFuzz_CannotShortWithPermit(address _sender) public {
+    function testFuzz_CannotAddLeverageUnauthorized(address _sender) public {
+        // Setup
+        uint256 ltv = 60;
+
+        // Take snapshot
+        uint256 id = vm.snapshot();
+
+        for (uint256 i; i < diffCTokenBTokenPositions.length; i++) {
+            // Test variables
+            address addr = diffCTokenBTokenPositions[i].addr;
+            address bToken = diffCTokenBTokenPositions[i].bToken;
+            uint256 bAmt = assets.maxCAmts(bToken);
+
+            // Assumptions
+            vm.assume(_sender != owner);
+
+            // Fund contract with bToken
+            _fund(addr, bToken, bAmt);
+
+            // Act
+            vm.prank(_sender);
+            vm.expectRevert(AdminService.Unauthorized.selector);
+            IPosition(addr).addLeverage(ltv, 0, TEST_POOL_FEE, TEST_CLIENT);
+
+            // Revert to snapshot
+            vm.revertTo(id);
+        }
+    }
+
+    /// @dev
+    // - It should revert with Unauthorized() error when called by an unauthorized sender.
+    function testFuzz_CannotAddWithPermit(address _sender) public {
+        // Setup
+        uint256 ltv = 60;
+
         // Take snapshot
         uint256 id = vm.snapshot();
 
@@ -137,7 +210,6 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
             // Test variables
             address cToken = positions[i].cToken;
             uint256 cAmt = assets.maxCAmts(cToken);
-            uint256 ltv = 60;
 
             // Assumptions
             vm.assume(_sender != owner);
@@ -152,7 +224,9 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
             // Act
             vm.prank(_sender);
             vm.expectRevert(AdminService.Unauthorized.selector);
-            IPosition(positions[i].addr).addWithPermit(cAmt, ltv, 0, 3000, TEST_CLIENT, permitTimestamp, v, r, s);
+            IPosition(positions[i].addr).addWithPermit(
+                cAmt, ltv, 0, TEST_POOL_FEE, TEST_CLIENT, permitTimestamp, v, r, s
+            );
 
             // Revert to snapshot
             vm.revertTo(id);
@@ -180,7 +254,7 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
             _fund(owner, positions[i].cToken, cAmt);
             vm.startPrank(owner);
             IERC20(positions[i].cToken).approve(addr, cAmt);
-            IPosition(addr).add(cAmt, ltv, 0, 3000, TEST_CLIENT);
+            IPosition(addr).add(cAmt, ltv, 0, TEST_POOL_FEE, TEST_CLIENT);
             vm.stopPrank();
 
             // Act

@@ -8,22 +8,29 @@ import { SafeTransferLib, ERC20 } from "solmate/utils/SafeTransferLib.sol";
 import { FeeLib } from "src/libraries/FeeLib.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 import { IERC20Permit } from "src/interfaces/token/IERC20Permit.sol";
+import { IERC20Metadata } from "src/interfaces/token/IERC20Metadata.sol";
 
 /// @title Position
 /// @author Chain Rule, LLC
 /// @notice Manages the owner's individual position
 contract Position is DebtService, SwapService {
     // Immutables: no SLOAD to save gas
+    uint8 public immutable B_DECIMALS;
     address public immutable B_TOKEN;
+
+    // Errors
+    error TokenConflict();
 
     // Events
     event Add(uint256 cAmt, uint256 dAmt, uint256 bAmt);
+    event AddLeverage(uint256 cAmt, uint256 dAmt, uint256 bAmt);
     event Close(uint256 gains);
 
     constructor(address _owner, address _cToken, address _dToken, address _bToken)
         DebtService(_owner, _cToken, _dToken)
     {
         B_TOKEN = _bToken;
+        B_DECIMALS = IERC20Metadata(_bToken).decimals();
     }
 
     /**
@@ -87,11 +94,40 @@ contract Position is DebtService, SwapService {
     }
 
     /**
+     * @notice Adds leverage to this contract's short position. This function can only be used for positions where the
+     *         collateral token is the same as the base token.
+     * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
+     * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
+     * @param _poolFee The fee of the Uniswap pool.
+     * @param _client The address of the client operator. Use address(0) if not using a client.
+     */
+    function addLeverage(uint256 _ltv, uint256 _swapAmtOutMin, uint24 _poolFee, address _client)
+        public
+        payable
+        onlyOwner
+    {
+        // 1. Ensure that collateral token is the same as the base token
+        if (C_TOKEN != B_TOKEN) revert TokenConflict();
+
+        // 2. Take protocol fee
+        uint256 bAmtNet = FeeLib.takeProtocolFee(B_TOKEN, IERC20(B_TOKEN).balanceOf(address(this)), _client);
+
+        // 3. Borrow debt token
+        uint256 dAmt = _borrow(bAmtNet, _ltv);
+
+        // 4. Swap debt token for base token
+        (, uint256 bAmt) = _swapExactInput(D_TOKEN, B_TOKEN, dAmt, _swapAmtOutMin, _poolFee);
+
+        // 5. Emit event
+        emit AddLeverage(bAmtNet, dAmt, bAmt);
+    }
+
+    /**
      * @notice Fully closes the short position.
      * @param _poolFee The fee of the Uniswap pool.
      * @param _exactOutput Whether to swap exact output or exact input (true for exact output, false for exact input).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through (only used if _exactOutput is false, supply 0 if true).
-     * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (default = 100_000, units: 8 decimals).
+     * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (at least 100_000 recommended, units: 8 decimals).
      */
     function close(uint24 _poolFee, bool _exactOutput, uint256 _swapAmtOutMin, uint256 _withdrawBuffer)
         public

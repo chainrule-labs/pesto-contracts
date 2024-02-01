@@ -25,6 +25,21 @@ interface IPosition {
      */
     function B_TOKEN() external returns (address);
 
+    /**
+     * @notice Returns the number of decimals for this position's collateral token.
+     */
+    function C_DECIMALS() external returns (uint8);
+
+    /**
+     * @notice Returns the number of decimals for this position's debt token.
+     */
+    function D_DECIMALS() external returns (uint8);
+
+    /**
+     * @notice Returns the number of decimals for this position's base token.
+     */
+    function B_DECIMALS() external returns (uint8);
+
     /* ****************************************************************************
     **
     **  CORE FUNCTIONS
@@ -68,11 +83,21 @@ interface IPosition {
     ) external payable;
 
     /**
+     * @notice Adds leverage to this contract's short position. This function can only be used for positions where the
+     *         collateral token is the same as the base token.
+     * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
+     * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
+     * @param _poolFee The fee of the Uniswap pool.
+     * @param _client The address of the client operator. Use address(0) if not using a client.
+     */
+    function addLeverage(uint256 _ltv, uint256 _swapAmtOutMin, uint24 _poolFee, address _client) external payable;
+
+    /**
      * @notice Fully closes the short position.
      * @param _poolFee The fee of the Uniswap pool.
      * @param _exactOutput Whether to swap exact output or exact input (true for exact output, false for exact input).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through (only used if _exactOutput is false, supply 0 if true).
-     * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (default = 100_000, units: 8 decimals).
+     * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (at least 100_000 recommended, units: 8 decimals).
      */
     function close(uint24 _poolFee, bool _exactOutput, uint256 _swapAmtOutMin, uint256 _withdrawBuffer)
         external
@@ -101,7 +126,7 @@ interface IPosition {
      * @notice Repays any outstanding debt to Aave and transfers remaining collateral from Aave to owner.
      * @param _dAmt The amount of debt token to repay to Aave (units: D_DECIMALS).
      *              To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
-     * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (default = 100_000, units: 8 decimals).
+     * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (at least 100_000 recommended, units: 8 decimals).
      */
     function repayAfterClose(uint256 _dAmt, uint256 _withdrawBuffer) external payable;
 
@@ -110,7 +135,7 @@ interface IPosition {
      *         with permit, obviating the need for a separate approve tx. This function can only be used for ERC-2612-compliant tokens.
      * @param _dAmt The amount of debt token to repay to Aave (units: D_DECIMALS).
      *              To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
-     * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (default = 100_000, units: 8 decimals).
+     * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (at least 100_000 recommended, units: 8 decimals).
      * @param _deadline The expiration timestamp of the permit.
      * @param _v The V parameter of ERC712 signature for the permit.
      * @param _r The R parameter of ERC712 signature for the permit.

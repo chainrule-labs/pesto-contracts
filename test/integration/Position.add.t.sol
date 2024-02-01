@@ -8,7 +8,14 @@ import { VmSafe } from "forge-std/Vm.sol";
 // Local Imports
 import { PositionFactory } from "src/PositionFactory.sol";
 import {
-    Assets, AAVE_ORACLE, CONTRACT_DEPLOYER, DAI, FEE_COLLECTOR, TEST_CLIENT, USDC
+    Assets,
+    AAVE_ORACLE,
+    CONTRACT_DEPLOYER,
+    DAI,
+    FEE_COLLECTOR,
+    TEST_CLIENT,
+    TEST_POOL_FEE,
+    USDC
 } from "test/common/Constants.t.sol";
 import { TokenUtils } from "test/common/utils/TokenUtils.t.sol";
 import { DebtUtils } from "test/common/utils/DebtUtils.t.sol";
@@ -16,7 +23,7 @@ import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IPosition } from "src/interfaces/IPosition.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
-contract PositionShortTest is Test, TokenUtils, DebtUtils {
+contract PositionAddTest is Test, TokenUtils, DebtUtils {
     /* solhint-disable func-name-mixedcase */
 
     struct TestPosition {
@@ -35,9 +42,6 @@ contract PositionShortTest is Test, TokenUtils, DebtUtils {
     address public positionAddr;
     uint256 public mainnetFork;
     address public owner = address(this);
-
-    // Events
-    event Add(uint256 cAmt, uint256 dAmt, uint256 bAmt);
 
     function setUp() public {
         // Setup: use mainnet fork
@@ -99,7 +103,7 @@ contract PositionShortTest is Test, TokenUtils, DebtUtils {
     // - The above should be true for a wide range of LTVs.
     // - The above should be true for a wide range of collateral amounts.
     // - The above should be true for all supported tokens.
-    function testFuzz_Short(uint256 _ltv, uint256 _cAmt) public {
+    function testFuzz_Add(uint256 _ltv, uint256 _cAmt) public {
         // Take snapshot
         uint256 id = vm.snapshot();
 
@@ -125,18 +129,18 @@ contract PositionShortTest is Test, TokenUtils, DebtUtils {
 
             // Act
             vm.recordLogs();
-            IPosition(addr).add(_cAmt, _ltv, 0, 3000, TEST_CLIENT);
+            IPosition(addr).add(_cAmt, _ltv, 0, TEST_POOL_FEE, TEST_CLIENT);
             VmSafe.Log[] memory entries = vm.getRecordedLogs();
 
             // Post-act balances
             uint256 cTokenPostBal = IERC20(cToken).balanceOf(owner);
             uint256 bTokenPostBal = IERC20(bToken).balanceOf(addr);
-            bytes memory shortEvent = entries[entries.length - 1].data;
+            bytes memory addEvent = entries[entries.length - 1].data;
             uint256 bAmt;
 
             assembly {
-                let startPos := sub(mload(shortEvent), 32)
-                bAmt := mload(add(shortEvent, add(0x20, startPos)))
+                let startPos := sub(mload(addEvent), 32)
+                bAmt := mload(add(addEvent, add(0x20, startPos)))
             }
 
             // Assertions

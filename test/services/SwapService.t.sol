@@ -6,7 +6,7 @@ import { Test } from "forge-std/Test.sol";
 
 // Local Imports
 import { SwapServiceHarness } from "test/harness/SwapServiceHarness.t.sol";
-import { Assets, DAI, USDC, USDC_HOLDER } from "test/common/Constants.t.sol";
+import { Assets, DAI, USDC, USDC_HOLDER, TEST_POOL_FEE } from "test/common/Constants.t.sol";
 import { TokenUtils } from "test/common/utils/TokenUtils.t.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
@@ -66,7 +66,7 @@ contract SwapServiceTest is Test, TokenUtils {
 
                     // Act
                     (uint256 amtIn, uint256 amtOut) = swapService.exposed_swapExactInput(
-                        inputToken, outputToken, assets.maxCAmts(inputToken), 0, 3000
+                        inputToken, outputToken, assets.maxCAmts(inputToken), 0, TEST_POOL_FEE
                     );
 
                     // Post-act balances
@@ -111,8 +111,9 @@ contract SwapServiceTest is Test, TokenUtils {
 
                     // Act
                     uint256 outputAmtOut = assets.swapAmtOuts(outputToken);
-                    (uint256 amtIn, uint256 amtOut) =
-                        swapService.exposed_swapExactOutput(inputToken, outputToken, outputAmtOut, inputPreBal, 3000);
+                    (uint256 amtIn, uint256 amtOut) = swapService.exposed_swapExactOutput(
+                        inputToken, outputToken, outputAmtOut, inputPreBal, TEST_POOL_FEE
+                    );
 
                     // Post-act balances
                     uint256 inputPostBal = IERC20(inputToken).balanceOf(swapServiceAddr);

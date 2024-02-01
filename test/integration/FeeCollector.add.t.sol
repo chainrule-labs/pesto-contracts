@@ -15,6 +15,7 @@ import {
     FEE_COLLECTOR,
     PROTOCOL_FEE_RATE,
     TEST_CLIENT,
+    TEST_POOL_FEE,
     USDC,
     WBTC,
     WETH
@@ -27,7 +28,7 @@ import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IPosition } from "src/interfaces/IPosition.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
-contract FeeCollectorShortTest is Test, TokenUtils, FeeUtils, DebtUtils {
+contract FeeCollectorAddTest is Test, TokenUtils, FeeUtils, DebtUtils {
     /* solhint-disable func-name-mixedcase */
 
     struct TestPosition {
@@ -112,7 +113,7 @@ contract FeeCollectorShortTest is Test, TokenUtils, FeeUtils, DebtUtils {
     // - The cToken amount supplied as collateral should be cAmt - (maxFee - userSavings).
     // - The cToken totalClientBalances should increase by clientFee.
     // - The client's cToken balance on the FeeCollector contract should increase by clientFee.
-    function testFuzz_ShortCollectFeesWithClient(uint256 _cAmt, uint256 _clientTakeRate) external payable {
+    function testFuzz_AddCollectFeesWithClient(uint256 _cAmt, uint256 _clientTakeRate) external payable {
         // Setup
         FeeCollectorBalances memory feeCollectorBalances;
 
@@ -150,7 +151,7 @@ contract FeeCollectorShortTest is Test, TokenUtils, FeeUtils, DebtUtils {
             assertEq(prePositionATokenBal, 0);
 
             // Act: increase short position
-            IPosition(positionAddr).add(_cAmt, 50, 0, 3000, TEST_CLIENT);
+            IPosition(positionAddr).add(_cAmt, 50, 0, TEST_POOL_FEE, TEST_CLIENT);
 
             // Post-act balances
             feeCollectorBalances.postFeeTokenBal = IERC20(cToken).balanceOf(FEE_COLLECTOR);
@@ -174,12 +175,9 @@ contract FeeCollectorShortTest is Test, TokenUtils, FeeUtils, DebtUtils {
     // - The cToken amount supplied as collateral should be cAmt - (maxFee - userSavings).
     // - The cToken totalClientBalances should not change
     // - The above should be true when _client is sent as address(0)
-    function testFuzz_ShortCollectFeesNoClient(uint256 _cAmt, uint256 _clientTakeRate) external payable {
+    function testFuzz_AddCollectFeesNoClient(uint256 _cAmt) external payable {
         // Setup
         FeeCollectorBalances memory feeCollectorBalances;
-
-        // Bound fuzzed inputs
-        _clientTakeRate = bound(_clientTakeRate, 0, 100);
 
         for (uint256 i; i < positions.length; i++) {
             // Test Variables
@@ -207,7 +205,7 @@ contract FeeCollectorShortTest is Test, TokenUtils, FeeUtils, DebtUtils {
             assertEq(prePositionATokenBal, 0);
 
             // Act: increase short position
-            IPosition(positionAddr).add(_cAmt, 50, 0, 3000, address(0));
+            IPosition(positionAddr).add(_cAmt, 50, 0, TEST_POOL_FEE, address(0));
 
             // Post-act balances
             feeCollectorBalances.postFeeTokenBal = IERC20(cToken).balanceOf(FEE_COLLECTOR);
