@@ -106,7 +106,7 @@ contract PositionAddLeverageTest is Test, TokenUtils, DebtUtils {
 
     /// @dev
     // - The Position contract's bToken balance after adding leverage should equal bAmt (from swap).
-    // - The Position contract's aToken balance should increase by cAmt (from swap).
+    // - The Position contract's aToken balance should increase by its bToken balance before adding leverage.
     // - The Position contract's variable debt token balance should increase by dAmt (from borrow).
     // - The above should be true for a large range of LTVs and cAmts.
     function testFuzz_AddLeverage(uint256 _ltv, uint256 _cAmt) public {
