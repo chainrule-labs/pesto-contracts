@@ -87,6 +87,7 @@ contract PositionFactoryTest is Test, TokenUtils {
                             cToken = IPosition(position).C_TOKEN();
                             dToken = IPosition(position).D_TOKEN();
                             bToken = IPosition(position).B_TOKEN();
+                            uint8 bDecimals = assets.decimals(IPosition(position).B_TOKEN());
 
                             // Assertions
                             assertNotEq(position, address(0));
@@ -94,6 +95,7 @@ contract PositionFactoryTest is Test, TokenUtils {
                             assertEq(cToken, supportedAssets[i]);
                             assertEq(dToken, supportedAssets[j]);
                             assertEq(bToken, supportedAssets[k]);
+                            assertEq(IPosition(position).B_DECIMALS(), bDecimals);
                         }
                     }
                 }

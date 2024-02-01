@@ -23,7 +23,7 @@ import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IPosition } from "src/interfaces/IPosition.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
-contract PositionShortPermitTest is Test, TokenUtils, DebtUtils {
+contract PositionAddLeverageTest is Test, TokenUtils, DebtUtils {
     /* solhint-disable func-name-mixedcase */
 
     struct TestPosition {
@@ -40,15 +40,6 @@ contract PositionShortPermitTest is Test, TokenUtils, DebtUtils {
         uint256 postVDToken;
         uint256 preAToken;
         uint256 postAToken;
-        uint256 preDToken;
-        uint256 postDToken;
-    }
-
-    struct OwnerBalances {
-        uint256 preBToken;
-        uint256 postBToken;
-        uint256 preCToken;
-        uint256 postCToken;
     }
 
     // Test contracts
@@ -57,13 +48,9 @@ contract PositionShortPermitTest is Test, TokenUtils, DebtUtils {
     TestPosition[] public positions;
 
     // Test Storage
-    VmSafe.Wallet public wallet;
     address public positionAddr;
     uint256 public mainnetFork;
-    address public owner;
-
-    // Events
-    event Add(uint256 cAmt, uint256 dAmt, uint256 bAmt);
+    address public owner = address(this);
 
     function setUp() public {
         // Setup: use mainnet fork
@@ -82,27 +69,20 @@ contract PositionShortPermitTest is Test, TokenUtils, DebtUtils {
         vm.prank(CONTRACT_DEPLOYER);
         positionFactory = new PositionFactory(CONTRACT_DEPLOYER);
 
-        // Set contract owner
-        wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(1)))));
-        owner = wallet.addr;
-
-        // Deploy and store all possible positions
+        // Deploy and store all possible positions where cToken and bToken are the same
         for (uint256 i; i < supportedAssets.length; i++) {
             address cToken = supportedAssets[i];
             for (uint256 j; j < supportedAssets.length; j++) {
                 if (j != i) {
                     address dToken = supportedAssets[j];
-                    for (uint256 k; k < supportedAssets.length; k++) {
-                        address bToken = supportedAssets[k];
-                        // Exclude positions with no pool
-                        bool poolExists = !((dToken == USDC && bToken == DAI) || (dToken == DAI && bToken == USDC));
-                        if (k != j && poolExists) {
-                            vm.prank(owner);
-                            positionAddr = positionFactory.createPosition(cToken, dToken, bToken);
-                            TestPosition memory newPosition =
-                                TestPosition({ addr: positionAddr, cToken: cToken, dToken: dToken, bToken: bToken });
-                            positions.push(newPosition);
-                        }
+                    address bToken = cToken;
+                    // Exclude positions with no pool
+                    bool poolExists = !((dToken == USDC && bToken == DAI) || (dToken == DAI && bToken == USDC));
+                    if (poolExists) {
+                        positionAddr = positionFactory.createPosition(cToken, dToken, bToken);
+                        TestPosition memory newPosition =
+                            TestPosition({ addr: positionAddr, cToken: cToken, dToken: dToken, bToken: bToken });
+                        positions.push(newPosition);
                     }
                 }
             }
@@ -119,23 +99,28 @@ contract PositionShortPermitTest is Test, TokenUtils, DebtUtils {
     }
 
     /// @dev
-    // - Owner's cToken balance should decrease by collateral amount supplied.
-    // - Position's bToken balance should increase by amount receieved from swap.
-    // - The above should be true for a wide range of LTVs.
-    // - The above should be true for a wide range of collateral amounts.
-    // - The above should be true for all supported tokens.
-    // - The act should be accomplished without a separate approve tx.
-    function testFuzz_AddWithPermit(uint256 _ltv, uint256 _cAmt) public {
+    // - The active fork should be the forked network created in the setup
+    function test_ActiveFork() public {
+        assertEq(vm.activeFork(), mainnetFork, "vm.activeFork() != mainnetFork");
+    }
+
+    /// @dev
+    // - The Position contract's bToken balance after adding leverage should equal bAmt (from swap).
+    // - The Position contract's aToken balance should increase by its bToken balance before adding leverage.
+    // - The Position contract's variable debt token balance should increase by dAmt (from borrow).
+    // - The above should be true for a large range of LTVs and cAmts.
+    function testFuzz_AddLeverage(uint256 _ltv, uint256 _cAmt) public {
+        // Setup
         ContractBalances memory contractBalances;
-        OwnerBalances memory ownerBalances;
 
         // Take snapshot
         uint256 id = vm.snapshot();
 
         for (uint256 i; i < positions.length; i++) {
             // Test variables
+            address addr = positions[i].addr;
             address cToken = positions[i].cToken;
-            address bToken = positions[i].bToken;
+            address bToken = cToken;
 
             // Bound fuzzed variables
             _ltv = bound(_ltv, 1, 60);
@@ -144,36 +129,42 @@ contract PositionShortPermitTest is Test, TokenUtils, DebtUtils {
             // Fund owner with collateral
             _fund(owner, cToken, _cAmt);
 
-            // Get permit
-            uint256 permitTimestamp = block.timestamp + 1000;
-            (uint8 v, bytes32 r, bytes32 s) = _getPermit(cToken, wallet, positions[i].addr, _cAmt, permitTimestamp);
+            // Approve position to spend collateral
+            IERC20(cToken).approve(addr, _cAmt);
+
+            // Add initial short position
+            IPosition(addr).add(_cAmt, 50, 0, TEST_POOL_FEE, TEST_CLIENT);
 
             // Pre-act balances
-            contractBalances.preBToken = IERC20(bToken).balanceOf(positions[i].addr);
-            ownerBalances.preCToken = IERC20(cToken).balanceOf(owner);
+            contractBalances.preBToken = IERC20(bToken).balanceOf(addr);
+            contractBalances.preVDToken = _getVariableDebtTokenBalance(addr, positions[i].dToken);
+            contractBalances.preAToken = _getATokenBalance(addr, positions[i].cToken);
 
             // Act
             vm.recordLogs();
-            vm.prank(owner);
-            IPosition(positions[i].addr).addWithPermit(
-                _cAmt, _ltv, 0, TEST_POOL_FEE, TEST_CLIENT, permitTimestamp, v, r, s
-            );
+            IPosition(addr).addLeverage(_ltv, 0, TEST_POOL_FEE, TEST_CLIENT);
+
+            // Retrieve bAmt and dAmt from AddLeverage event
             VmSafe.Log[] memory entries = vm.getRecordedLogs();
-
-            // Post-act balances
-            contractBalances.postBToken = IERC20(bToken).balanceOf(positions[i].addr);
-            ownerBalances.postCToken = IERC20(cToken).balanceOf(owner);
-            bytes memory addEvent = entries[entries.length - 1].data;
+            bytes memory addLeverageEvent = entries[entries.length - 1].data;
+            uint256 cAmt;
+            uint256 dAmt;
             uint256 bAmt;
-
             assembly {
-                let startPos := sub(mload(addEvent), 32)
-                bAmt := mload(add(addEvent, add(0x20, startPos)))
+                cAmt := mload(add(addLeverageEvent, 0x20))
+                dAmt := mload(add(addLeverageEvent, 0x40))
+                bAmt := mload(add(addLeverageEvent, 0x60))
             }
 
+            // Post-act balances
+            contractBalances.postBToken = IERC20(bToken).balanceOf(addr);
+            contractBalances.postVDToken = _getVariableDebtTokenBalance(addr, positions[i].dToken);
+            contractBalances.postAToken = _getATokenBalance(addr, positions[i].cToken);
+
             // Assertions
-            assertEq(ownerBalances.postCToken, ownerBalances.preCToken - _cAmt);
-            assertEq(contractBalances.postBToken, contractBalances.preBToken + bAmt);
+            assertEq(contractBalances.postBToken, bAmt);
+            assertApproxEqAbs(contractBalances.postAToken, contractBalances.preAToken + cAmt, 1);
+            assertApproxEqAbs(contractBalances.postVDToken, contractBalances.preVDToken + dAmt, 1);
 
             // Revert to snapshot
             vm.revertTo(id);

@@ -19,6 +19,7 @@ address constant WBTC = 0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f;
 address constant USDC_HOLDER = 0x47c031236e19d024b42f8AE6780E44A573170703;
 
 // Uint constants
+uint24 constant TEST_POOL_FEE = 3000;
 uint256 constant PROFIT_PERCENT = 25;
 uint256 constant REPAY_PERCENT = 75;
 uint256 constant WITHDRAW_BUFFER = 100_000;

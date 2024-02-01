@@ -18,12 +18,15 @@ The following outlines principles for core protocol funcitonality.
 
 Logic:
 
--   None at the moment🙂
+-   None for now.
 
 Tests:
 
--   None at the moment🙂
+-   [ ] Create integration test for multiple calls `add()`
+-   [ ] Create integration test for multiple calls `addLeverage()`
+-   [ ] Create integration test for multiple calls `addWithPermit()`
+-   [ ] Remove all test_ActiveFork
 
 Considerations:
 
--   None at the moment🙂
+-   None for now.

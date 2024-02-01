@@ -19,10 +19,10 @@ contract DebtService is AdminService {
     address private constant AAVE_ORACLE = 0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7;
 
     // Immutables: no SLOAD to save gas
-    uint8 public immutable C_DECIMALS;
-    uint8 public immutable D_DECIMALS;
     uint64 internal immutable _C_DEC_CONVERSION;
     uint64 internal immutable _D_DEC_CONVERSION;
+    uint8 public immutable C_DECIMALS;
+    uint8 public immutable D_DECIMALS;
     address public immutable C_TOKEN;
     address public immutable D_TOKEN;
 
@@ -75,7 +75,7 @@ contract DebtService is AdminService {
     /**
      * @notice Withdraws collateral token from Aave to specified recipient.
      * @param _recipient The recipient of the funds.
-     * @param _buffer The amount of collateral left as safety buffer for tx to go through (default = 100_000, units: 8 decimals).
+     * @param _buffer The amount of collateral left as safety buffer for tx to go through (at least 100_000 recommended, units: 8 decimals).
      */
     function _withdraw(address _recipient, uint256 _buffer) internal {
         IPool(AAVE_POOL).withdraw(C_TOKEN, _getMaxWithdrawAmt(_buffer), _recipient);
@@ -151,7 +151,7 @@ contract DebtService is AdminService {
      * @notice Repays any outstanding debt to Aave and transfers remaining collateral from Aave to owner.
      * @param _dAmt The amount of debt token to repay to Aave (units: D_DECIMALS).
      *              To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
-     * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (default = 100_000, units: 8 decimals).
+     * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (at least 100_000 recommended, units: 8 decimals).
      */
     function repayAfterClose(uint256 _dAmt, uint256 _withdrawBuffer) public payable onlyOwner {
         SafeTransferLib.safeTransferFrom(ERC20(D_TOKEN), msg.sender, address(this), _dAmt);
@@ -166,7 +166,7 @@ contract DebtService is AdminService {
      *         with permit, obviating the need for a separate approve tx. This function can only be used for ERC-2612-compliant tokens.
      * @param _dAmt The amount of debt token to repay to Aave (units: D_DECIMALS).
      *              To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
-     * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (default = 100_000, units: 8 decimals).
+     * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (at least 100_000 recommended, units: 8 decimals).
      * @param _deadline The expiration timestamp of the permit.
      * @param _v The V parameter of ERC712 signature for the permit.
      * @param _r The R parameter of ERC712 signature for the permit.
