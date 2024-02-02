@@ -24,14 +24,9 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
     // Test Storage
     DebtServiceHarness[] public debtServices;
     address[4] public supportedAssets;
-    uint256 public mainnetFork;
     address public owner = address(this);
 
     function setUp() public {
-        // Setup: use mainnet fork
-        mainnetFork = vm.createFork(vm.envString("RPC_URL"));
-        vm.selectFork(mainnetFork);
-
         assets = new Assets();
         supportedAssets = assets.getSupported();
 
@@ -50,12 +45,6 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
                 }
             }
         }
-    }
-
-    /// @dev
-    // - The active fork should be the forked network created in the setup
-    function test_ActiveFork() public {
-        assertEq(vm.activeFork(), mainnetFork, "vm.activeFork() != mainnetFork");
     }
 
     /// @dev
@@ -444,14 +433,9 @@ contract DebtServicePermitTest is Test, DebtUtils, TokenUtils {
     DebtServiceHarness[] public debtServices;
     VmSafe.Wallet public wallet;
     address[4] public supportedAssets;
-    uint256 public mainnetFork;
     address public owner;
 
     function setUp() public {
-        // Setup: use mainnet fork
-        mainnetFork = vm.createFork(vm.envString("RPC_URL"));
-        vm.selectFork(mainnetFork);
-
         // Deploy Assets contract
         assets = new Assets();
         supportedAssets = assets.getSupported();

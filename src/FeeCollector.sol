@@ -39,8 +39,11 @@ contract FeeCollector is Ownable {
 
         // 2. Update client balances
         if (_client != address(0)) {
-            balances[_client][_token] += _clientFee;
-            totalClientBalances[_token] += _clientFee;
+            // Cannot overflow because the sum of all client balances can't exceed the max uint256 value.
+            unchecked {
+                balances[_client][_token] += _clientFee;
+                totalClientBalances[_token] += _clientFee;
+            }
         }
     }
 

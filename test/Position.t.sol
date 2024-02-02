@@ -43,14 +43,9 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
     // Test Storage
     VmSafe.Wallet public wallet;
     address public positionAddr;
-    uint256 public mainnetFork;
     address public owner;
 
     function setUp() public {
-        // Setup: use mainnet fork
-        mainnetFork = vm.createFork(vm.envString("RPC_URL"));
-        vm.selectFork(mainnetFork);
-
         // Set contract owner
         wallet = vm.createWallet(uint256(keccak256(abi.encodePacked(uint256(1)))));
         owner = wallet.addr;
@@ -96,12 +91,6 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
                 diffCTokenBTokenPositions.push(currentPosition);
             }
         }
-    }
-
-    /// @dev
-    // - The active fork should be the forked network created in the setup
-    function test_ActiveFork() public {
-        assertEq(vm.activeFork(), mainnetFork, "vm.activeFork() != mainnetFork");
     }
 
     /// @dev
@@ -249,7 +238,7 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
             // Test variables
             address addr = positions[i].addr;
 
-            // Setup: open short position
+            // Setup: open position
             uint256 cAmt = assets.maxCAmts(positions[i].cToken);
             _fund(owner, positions[i].cToken, cAmt);
             vm.startPrank(owner);

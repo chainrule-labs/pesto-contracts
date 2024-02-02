@@ -20,24 +20,13 @@ contract SwapServiceTest is Test, TokenUtils {
     // Test Storage
     address[4] public supportedAssets;
     address swapServiceAddr;
-    uint256 public mainnetFork;
 
     function setUp() public {
-        // Setup: use mainnet fork
-        mainnetFork = vm.createFork(vm.envString("RPC_URL"));
-        vm.selectFork(mainnetFork);
-
         assets = new Assets();
         supportedAssets = assets.getSupported();
 
         swapService = new SwapServiceHarness();
         swapServiceAddr = address(swapService);
-    }
-
-    /// @dev
-    // - The active fork should be the forked network created in the setup
-    function test_ActiveFork() public {
-        assertEq(vm.activeFork(), mainnetFork, "vm.activeFork() != mainnetFork");
     }
 
     /// @dev

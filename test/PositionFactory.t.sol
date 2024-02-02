@@ -19,7 +19,6 @@ contract PositionFactoryTest is Test, TokenUtils {
     Assets public assets;
 
     // Test Storage
-    uint256 public mainnetFork;
     address public positionOwner = address(this);
 
     // Errors
@@ -29,19 +28,9 @@ contract PositionFactoryTest is Test, TokenUtils {
     event PositionCreated(address indexed owner, address indexed position);
 
     function setUp() public {
-        // Setup: use mainnet fork
-        mainnetFork = vm.createFork(vm.envString("RPC_URL"));
-        vm.selectFork(mainnetFork);
-
         vm.prank(CONTRACT_DEPLOYER);
         positionFactory = new PositionFactory(CONTRACT_DEPLOYER);
         assets = new Assets();
-    }
-
-    /// @dev
-    // - The active fork should be the forked network created in the setup
-    function test_ActiveFork() public {
-        assertEq(vm.activeFork(), mainnetFork, "vm.activeFork() != mainnetFork");
     }
 
     /// @dev

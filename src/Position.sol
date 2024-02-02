@@ -34,7 +34,7 @@ contract Position is DebtService, SwapService {
     }
 
     /**
-     * @notice Adds to this contract's short position.
+     * @notice Adds to this contract's position.
      * @param _cAmt The amount of collateral token to be supplied for this transaction-specific loan (units: C_DECIMALS).
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
@@ -63,7 +63,7 @@ contract Position is DebtService, SwapService {
     }
 
     /**
-     * @notice Adds to this contract's short position with permit, obviating the need for a separate approve tx.
+     * @notice Adds to this contract's position with permit, obviating the need for a separate approve tx.
      *         This function can only be used for ERC-2612-compliant tokens.
      * @param _cAmt The amount of collateral token to be supplied for this transaction-specific loan (units: C_DECIMALS).
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
@@ -94,7 +94,7 @@ contract Position is DebtService, SwapService {
     }
 
     /**
-     * @notice Adds leverage to this contract's short position. This function can only be used for positions where the
+     * @notice Adds leverage to this contract's position. This function can only be used for positions where the
      *         collateral token is the same as the base token.
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
@@ -123,7 +123,7 @@ contract Position is DebtService, SwapService {
     }
 
     /**
-     * @notice Fully closes the short position.
+     * @notice Fully closes the position.
      * @param _poolFee The fee of the Uniswap pool.
      * @param _exactOutput Whether to swap exact output or exact input (true for exact output, false for exact input).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through (only used if _exactOutput is false, supply 0 if true).
