@@ -51,7 +51,6 @@ contract FeeCollectorClientFeesTest is Test, TokenUtils {
 
             // Setup
             address feeToken = supportedAssets[i];
-            // uint256 clientTakeRate = 50;
 
             // Set client rate
             vm.prank(CONTRACT_DEPLOYER);

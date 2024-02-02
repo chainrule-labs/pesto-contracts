@@ -15,6 +15,7 @@ import {
     FEE_COLLECTOR,
     PROTOCOL_FEE_RATE,
     TEST_CLIENT,
+    TEST_LTV,
     TEST_POOL_FEE,
     USDC,
     WBTC,
@@ -140,7 +141,7 @@ contract FeeCollectorAddTest is Test, TokenUtils, FeeUtils, DebtUtils {
             assertEq(prePositionATokenBal, 0);
 
             // Act: increase position
-            IPosition(positionAddr).add(_cAmt, 50, 0, TEST_POOL_FEE, TEST_CLIENT);
+            IPosition(positionAddr).add(_cAmt, TEST_LTV, 0, TEST_POOL_FEE, TEST_CLIENT);
 
             // Post-act balances
             feeCollectorBalances.postFeeTokenBal = IERC20(cToken).balanceOf(FEE_COLLECTOR);
@@ -194,7 +195,7 @@ contract FeeCollectorAddTest is Test, TokenUtils, FeeUtils, DebtUtils {
             assertEq(prePositionATokenBal, 0);
 
             // Act: increase position
-            IPosition(positionAddr).add(_cAmt, 50, 0, TEST_POOL_FEE, address(0));
+            IPosition(positionAddr).add(_cAmt, TEST_LTV, 0, TEST_POOL_FEE, address(0));
 
             // Post-act balances
             feeCollectorBalances.postFeeTokenBal = IERC20(cToken).balanceOf(FEE_COLLECTOR);

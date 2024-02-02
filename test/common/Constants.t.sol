@@ -28,6 +28,7 @@ uint256 constant PROTOCOL_FEE_RATE = 3;
 uint256 constant CLIENT_RATE = 30;
 uint256 constant CLIENT_TAKE_RATE = 50;
 uint256 constant SUCCESSIVE_ITERATIONS = 5;
+uint256 constant TEST_LTV = 50;
 
 contract Assets {
     address[4] public supported = [USDC, DAI, WETH, WBTC];

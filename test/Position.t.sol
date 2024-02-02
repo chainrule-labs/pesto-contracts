@@ -15,6 +15,7 @@ import {
     DAI,
     FEE_COLLECTOR,
     TEST_CLIENT,
+    TEST_LTV,
     TEST_POOL_FEE,
     USDC,
     WITHDRAW_BUFFER
@@ -225,9 +226,6 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
     /// @dev
     // - It should revert with Unauthorized() error when called by an unauthorized sender.
     function testFuzz_CannotClose(address _sender) public {
-        // Setup
-        uint256 ltv = 50;
-
         // Assumptions
         vm.assume(_sender != owner);
 
@@ -243,7 +241,7 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
             _fund(owner, positions[i].cToken, cAmt);
             vm.startPrank(owner);
             IERC20(positions[i].cToken).approve(addr, cAmt);
-            IPosition(addr).add(cAmt, ltv, 0, TEST_POOL_FEE, TEST_CLIENT);
+            IPosition(addr).add(cAmt, TEST_LTV, 0, TEST_POOL_FEE, TEST_CLIENT);
             vm.stopPrank();
 
             // Act

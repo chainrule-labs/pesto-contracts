@@ -180,9 +180,11 @@ contract PositionAddTest is Test, TokenUtils, DebtUtils, FeeUtils {
             assertEq(positionBalances.preAToken, 0);
             assertEq(positionBalances.preVDToken, 0);
 
+            // Approve Position contract to spend collateral
+            IERC20(p.cToken).approve(p.addr, _cAmt);
+
             // Act
             vm.recordLogs();
-            IERC20(p.cToken).approve(p.addr, _cAmt);
             IPosition(p.addr).add(_cAmt, _ltv, 0, TEST_POOL_FEE, TEST_CLIENT);
 
             // Post-act balances
@@ -213,9 +215,9 @@ contract PositionAddTest is Test, TokenUtils, DebtUtils, FeeUtils {
     }
 
     /// @dev
-    // - The Position contract's bToken balance should increase by total bAmt receieved from swap across all add actions.
-    // - The Position contract's aToken balance should increase by emitted cAmt across all add actions.
-    // - The Position contract's variableDebtToken balance should increase by total dAmt received from borrow across all add actions.
+    // - The Position contract's bToken balance should increase by the sum of bAmt's receieved from swaps across all add actions.
+    // - The Position contract's aToken balance should increase by the sum of emitted cAmt's across all add actions.
+    // - The Position contract's variableDebtToken balance should increase by the sum of dAmt's received from borrowing across all add actions.
     // - The above should be true for a wide range of LTVs.
     // - The above should be true for a wide range of collateral amounts.
     // - The above should be true for all supported tokens.
@@ -255,9 +257,11 @@ contract PositionAddTest is Test, TokenUtils, DebtUtils, FeeUtils {
                 // Fund owner with collateral
                 _fund(owner, p.cToken, _cAmt);
 
+                // Approve Position contract to spend collateral
+                IERC20(p.cToken).approve(p.addr, _cAmt);
+
                 // Act
                 vm.recordLogs();
-                IERC20(p.cToken).approve(p.addr, _cAmt);
                 IPosition(p.addr).add(_cAmt, _ltv, 0, TEST_POOL_FEE, TEST_CLIENT);
 
                 // Retrieve bAmt and dAmt from Add event
@@ -296,8 +300,8 @@ contract PositionAddTest is Test, TokenUtils, DebtUtils, FeeUtils {
 
             // Assertions
             assertEq(positionBalances.postBToken, sums.bAmt);
-            /// @dev The max delta per iteration is 1. Therefore, the max
-            //  delta for all iterations is the number of iterations.
+            /// @dev Due to Aave interest, the max delta per iteration is 1.
+            //  Therefore, the max delta for all iterations is the number of iterations.
             assertApproxEqAbs(positionBalances.postAToken, sums.cAmt, SUCCESSIVE_ITERATIONS);
             assertApproxEqAbs(positionBalances.postVDToken, sums.dAmt, SUCCESSIVE_ITERATIONS);
 

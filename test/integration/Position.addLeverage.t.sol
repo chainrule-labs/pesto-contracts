@@ -11,11 +11,14 @@ import {
     Assets,
     AAVE_POOL,
     AAVE_ORACLE,
+    CLIENT_RATE,
+    CLIENT_TAKE_RATE,
     CONTRACT_DEPLOYER,
     DAI,
     FEE_COLLECTOR,
     SUCCESSIVE_ITERATIONS,
     TEST_CLIENT,
+    TEST_LTV,
     TEST_POOL_FEE,
     USDC,
     WBTC
@@ -26,6 +29,7 @@ import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IPosition } from "src/interfaces/IPosition.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 import { IPool } from "src/interfaces/aave/IPool.sol";
+import { IFeeCollector } from "src/interfaces/IFeeCollector.sol";
 
 contract PositionAddLeverageTest is Test, TokenUtils, DebtUtils {
     /* solhint-disable func-name-mixedcase */
@@ -44,8 +48,6 @@ contract PositionAddLeverageTest is Test, TokenUtils, DebtUtils {
         uint256 postVDToken;
         uint256 preAToken;
         uint256 postAToken;
-        uint256 cTotalUSD;
-        uint256 dTotalUSD;
     }
 
     struct SuccessiveSums {
@@ -79,6 +81,14 @@ contract PositionAddLeverageTest is Test, TokenUtils, DebtUtils {
         // Deploy FeeCollector
         vm.prank(CONTRACT_DEPLOYER);
         deployCodeTo("FeeCollector.sol", abi.encode(CONTRACT_DEPLOYER), FEE_COLLECTOR);
+
+        // Set client rate
+        vm.prank(CONTRACT_DEPLOYER);
+        IFeeCollector(FEE_COLLECTOR).setClientRate(CLIENT_RATE);
+
+        // Set client take rate
+        vm.prank(TEST_CLIENT);
+        IFeeCollector(FEE_COLLECTOR).setClientTakeRate(CLIENT_TAKE_RATE);
 
         // Deploy PositionFactory
         vm.prank(CONTRACT_DEPLOYER);
@@ -144,7 +154,7 @@ contract PositionAddLeverageTest is Test, TokenUtils, DebtUtils {
             IERC20(p.cToken).approve(p.addr, _cAmt);
 
             // Add initial position
-            IPosition(p.addr).add(_cAmt, 50, 0, TEST_POOL_FEE, TEST_CLIENT);
+            IPosition(p.addr).add(_cAmt, TEST_LTV, 0, TEST_POOL_FEE, TEST_CLIENT);
 
             // Pre-act balances
             positionBalances.preBToken = IERC20(p.bToken).balanceOf(p.addr);
@@ -188,7 +198,7 @@ contract PositionAddLeverageTest is Test, TokenUtils, DebtUtils {
     // - The Position contract's variable debt token balance should increase by dAmt received from borrow across all add actions
     // - The above should be true for a large range of LTVs and cAmts.
     // - The above should be true for all positions where the collateral token is the same as the base token.
-    function testFuzz_AddLeverageSuccessive(uint256 _cAmt, uint256 _time) public {
+    function testFuzz_AddLeverageSuccessive(uint256 _ltv, uint256 _cAmt, uint256 _time) public {
         // Setup
         PositionBalances memory positionBalances;
         TestPosition memory p;
@@ -206,7 +216,7 @@ contract PositionAddLeverageTest is Test, TokenUtils, DebtUtils {
             p.bToken = positions[i].bToken;
 
             // Bound fuzzed variables
-            // _ltv = bound(_ltv, 1, 60);
+            _ltv = bound(_ltv, 1, 60);
             _cAmt = bound(_cAmt, assets.minCAmts(p.cToken), assets.maxCAmts(p.cToken));
 
             // Fund owner with collateral
@@ -214,7 +224,7 @@ contract PositionAddLeverageTest is Test, TokenUtils, DebtUtils {
 
             // Add initial position
             IERC20(p.cToken).approve(p.addr, _cAmt);
-            IPosition(p.addr).add(_cAmt, 50, 0, TEST_POOL_FEE, TEST_CLIENT);
+            IPosition(p.addr).add(_cAmt, _ltv, 0, TEST_POOL_FEE, TEST_CLIENT);
 
             /// @dev Initial balances to refect inital add
             uint256 bAmtEndState;
@@ -230,14 +240,12 @@ contract PositionAddLeverageTest is Test, TokenUtils, DebtUtils {
             bool shallowLiquidity = (p.bToken == DAI && p.dToken == WBTC) || (p.bToken == WBTC && p.dToken == DAI);
             if (!shallowLiquidity) {
                 for (uint256 j; j < SUCCESSIVE_ITERATIONS; j++) {
-                    _time = bound(_time, 1 minutes, 2 minutes);
-
-                    (positionBalances.cTotalUSD, positionBalances.dTotalUSD,,,,) =
-                        IPool(AAVE_POOL).getUserAccountData(p.addr);
+                    // Bound fuzzed variables
+                    _time = bound(_time, 1 minutes, 12 weeks);
 
                     // Act
                     vm.recordLogs();
-                    IPosition(p.addr).addLeverage(50, 0, TEST_POOL_FEE, TEST_CLIENT);
+                    IPosition(p.addr).addLeverage(TEST_LTV, 0, TEST_POOL_FEE, TEST_CLIENT);
 
                     // Retrieve bAmt and dAmt from AddLeverage event
                     VmSafe.Log[] memory entries = vm.getRecordedLogs();
@@ -276,8 +284,8 @@ contract PositionAddLeverageTest is Test, TokenUtils, DebtUtils {
                 // Assertions
 
                 assertEq(positionBalances.postBToken, bAmtEndState);
-                /// @dev The max delta per iteration is 1. Therefore, the max
-                //  delta for all iterations is the number of iterations.
+                /// @dev Due to Aave interest, the max delta per iteration is 1.
+                //  Therefore, the max delta for all iterations is the number of iterations.
                 assertApproxEqAbs(positionBalances.postAToken, sums.cAmt, SUCCESSIVE_ITERATIONS);
                 assertApproxEqAbs(positionBalances.postVDToken, sums.dAmt, SUCCESSIVE_ITERATIONS);
             }

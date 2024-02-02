@@ -26,6 +26,16 @@ interface IPosition {
     function B_TOKEN() external returns (address);
 
     /**
+     * @notice Returns the address of the FeeCollector contract, which is responsible for collecting and allocating protocol fees.
+     */
+    function FEE_COLLECTOR() external returns (address);
+
+    /**
+     * @notice Returns the maximum percentage of the collateral token that the protocol charges each revenue-generating transaction.
+     */
+    function PROTOCOL_FEE_RATE() external returns (uint256);
+
+    /**
      * @notice Returns the number of decimals for this position's collateral token.
      */
     function C_DECIMALS() external returns (uint8);
