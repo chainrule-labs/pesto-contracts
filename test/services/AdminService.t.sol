@@ -21,14 +21,9 @@ contract AdminServiceTest is Test, TokenUtils {
 
     // Test Storage
     address public positionAddr;
-    uint256 public mainnetFork;
     address public owner = address(this);
 
     function setUp() public {
-        // Setup: use mainnet fork
-        mainnetFork = vm.createFork(vm.envString("RPC_URL"));
-        vm.selectFork(mainnetFork);
-
         // Deploy assets
         assets = new Assets();
         address[4] memory supportedAssets = assets.getSupported();
@@ -39,12 +34,6 @@ contract AdminServiceTest is Test, TokenUtils {
 
         // Deploy a Position
         positionAddr = positionFactory.createPosition(supportedAssets[0], supportedAssets[3], supportedAssets[2]);
-    }
-
-    /// @dev
-    // - The active fork should be the forked network created in the setup
-    function test_ActiveFork() public {
-        assertEq(vm.activeFork(), mainnetFork, "vm.activeFork() != mainnetFork");
     }
 
     /// @dev

@@ -26,6 +26,9 @@ uint256 constant WITHDRAW_BUFFER = 100_000;
 uint256 constant REPAY_BUFFER = 2;
 uint256 constant PROTOCOL_FEE_RATE = 3;
 uint256 constant CLIENT_RATE = 30;
+uint256 constant CLIENT_TAKE_RATE = 50;
+uint256 constant SUCCESSIVE_ITERATIONS = 5;
+uint256 constant TEST_LTV = 50;
 
 contract Assets {
     address[4] public supported = [USDC, DAI, WETH, WBTC];
@@ -43,10 +46,10 @@ contract Assets {
         decimals[WBTC] = 8;
 
         // Set max collateral amounts
-        maxCAmts[USDC] = 1_000 * 10 ** 6;
-        maxCAmts[DAI] = 100_000 * 10 ** 18;
-        maxCAmts[WETH] = 50 * 10 ** 18;
-        maxCAmts[WBTC] = 2 * 10 ** 8;
+        maxCAmts[USDC] = 10_000 * 10 ** 6;
+        maxCAmts[DAI] = 10_000 * 10 ** 18;
+        maxCAmts[WETH] = 25 * 10 ** 18;
+        maxCAmts[WBTC] = 1 * 10 ** 8;
 
         // Set min collateral amounts
         minCAmts[USDC] = 100 * 10 ** 6;

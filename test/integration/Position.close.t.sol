@@ -17,6 +17,7 @@ import {
     REPAY_PERCENT,
     SWAP_ROUTER,
     TEST_CLIENT,
+    TEST_LTV,
     TEST_POOL_FEE,
     USDC,
     WITHDRAW_BUFFER
@@ -63,14 +64,9 @@ contract PositionCloseTest is Test, TokenUtils, DebtUtils {
 
     // Test Storage
     address public positionAddr;
-    uint256 public mainnetFork;
     address public owner = address(this);
 
     function setUp() public {
-        // Setup: use mainnet fork
-        mainnetFork = vm.createFork(vm.envString("RPC_URL"));
-        vm.selectFork(mainnetFork);
-
         // Deploy assets
         assets = new Assets();
         address[4] memory supportedAssets = assets.getSupported();
@@ -115,12 +111,6 @@ contract PositionCloseTest is Test, TokenUtils, DebtUtils {
     }
 
     /// @dev
-    // - The active fork should be the forked network created in the setup
-    function test_ActiveFork() public {
-        assertEq(vm.activeFork(), mainnetFork, "vm.activeFork() != mainnetFork");
-    }
-
-    /// @dev
     // - Position contract's bToken balance should go to 0.
     // - Position contract's debt on Aave should go to 0.
     // - Owner's cToken balance should increase by the amount of collateral withdrawn.
@@ -138,12 +128,11 @@ contract PositionCloseTest is Test, TokenUtils, DebtUtils {
             // Test variables
             address addr = positions[i].addr;
 
-            // Setup: open short position
+            // Setup: open position
             uint256 cAmt = assets.maxCAmts(positions[i].cToken);
-            uint256 ltv = 50;
             _fund(owner, positions[i].cToken, cAmt);
             IERC20(positions[i].cToken).approve(addr, cAmt);
-            IPosition(addr).add(cAmt, ltv, 0, TEST_POOL_FEE, TEST_CLIENT);
+            IPosition(addr).add(cAmt, TEST_LTV, 0, TEST_POOL_FEE, TEST_CLIENT);
 
             // Get pre-act balances
             contractBalances.preBToken = IERC20(positions[i].bToken).balanceOf(addr);
@@ -221,12 +210,11 @@ contract PositionCloseTest is Test, TokenUtils, DebtUtils {
             // Test variables
             address addr = positions[i].addr;
 
-            // Setup: open short position
+            // Setup: open position
             uint256 cAmt = assets.maxCAmts(positions[i].cToken);
-            uint256 ltv = 50;
             _fund(owner, positions[i].cToken, cAmt);
             IERC20(positions[i].cToken).approve(addr, cAmt);
-            IPosition(addr).add(cAmt, ltv, 0, TEST_POOL_FEE, TEST_CLIENT);
+            IPosition(addr).add(cAmt, TEST_LTV, 0, TEST_POOL_FEE, TEST_CLIENT);
 
             // Get pre-act balances
             contractBalances.preBToken = IERC20(positions[i].bToken).balanceOf(addr);
@@ -312,12 +300,11 @@ contract PositionCloseTest is Test, TokenUtils, DebtUtils {
             // Test variables
             address addr = positions[i].addr;
 
-            // Setup: open short position
+            // Setup: open position
             uint256 cAmt = assets.maxCAmts(positions[i].cToken);
-            uint256 ltv = 50;
             _fund(owner, positions[i].cToken, cAmt);
             IERC20(positions[i].cToken).approve(addr, cAmt);
-            IPosition(addr).add(cAmt, ltv, 0, TEST_POOL_FEE, TEST_CLIENT);
+            IPosition(addr).add(cAmt, TEST_LTV, 0, TEST_POOL_FEE, TEST_CLIENT);
 
             // Get pre-act balances
             contractBalances.preBToken = IERC20(positions[i].bToken).balanceOf(addr);
@@ -380,12 +367,11 @@ contract PositionCloseTest is Test, TokenUtils, DebtUtils {
             // Test variables
             address addr = positions[i].addr;
 
-            // Setup: open short position
+            // Setup: open position
             uint256 cAmt = assets.maxCAmts(positions[i].cToken);
-            uint256 ltv = 50;
             _fund(owner, positions[i].cToken, cAmt);
             IERC20(positions[i].cToken).approve(addr, cAmt);
-            IPosition(addr).add(cAmt, ltv, 0, TEST_POOL_FEE, TEST_CLIENT);
+            IPosition(addr).add(cAmt, TEST_LTV, 0, TEST_POOL_FEE, TEST_CLIENT);
 
             // Get pre-act balances
             contractBalances.preVDToken = _getVariableDebtTokenBalance(addr, positions[i].dToken);

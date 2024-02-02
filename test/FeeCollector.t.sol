@@ -32,15 +32,10 @@ contract FeeCollectorTest is Test, TokenUtils, FeeUtils {
     TestPosition[] public positions;
 
     // Test Storage
-    uint256 public mainnetFork;
     address public positionOwner = address(this);
     address public feeCollectorAddr;
 
     function setUp() public {
-        // Setup: use mainnet fork
-        mainnetFork = vm.createFork(vm.envString("RPC_URL"));
-        vm.selectFork(mainnetFork);
-
         // Deploy assets
         assets = new Assets();
         address[4] memory supportedAssets = assets.getSupported();
@@ -72,12 +67,6 @@ contract FeeCollectorTest is Test, TokenUtils, FeeUtils {
         positionAddr = positionFactory.createPosition(WETH, USDC, WETH);
         newPosition = TestPosition({ addr: positionAddr, cToken: WETH, dToken: USDC, bToken: WETH });
         positions.push(newPosition);
-    }
-
-    /// @dev
-    // - The active fork should be the forked network created in the setup
-    function test_ActiveFork() public {
-        assertEq(vm.activeFork(), mainnetFork, "vm.activeFork() != mainnetFork");
     }
 
     /// @dev

@@ -26,14 +26,7 @@ contract FeeLibTest is Test, TokenUtils, FeeUtils {
     Assets public assets;
     address[] public supportedAssets;
 
-    // Test Storage
-    uint256 public mainnetFork;
-
     function setUp() public {
-        // Setup: use mainnet fork
-        mainnetFork = vm.createFork(vm.envString("RPC_URL"));
-        vm.selectFork(mainnetFork);
-
         // Deploy assets
         assets = new Assets();
         supportedAssets = assets.getSupported();
@@ -45,12 +38,6 @@ contract FeeLibTest is Test, TokenUtils, FeeUtils {
         // Set client rate
         vm.prank(CONTRACT_DEPLOYER);
         IFeeCollector(FEE_COLLECTOR).setClientRate(CLIENT_RATE);
-    }
-
-    /// @dev
-    // - The active fork should be the forked network created in the setup
-    function test_ActiveFork() public {
-        assertEq(vm.activeFork(), mainnetFork, "vm.activeFork() != mainnetFork");
     }
 
     /// @dev

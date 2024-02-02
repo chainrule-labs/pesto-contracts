@@ -26,6 +26,16 @@ interface IPosition {
     function B_TOKEN() external returns (address);
 
     /**
+     * @notice Returns the address of the FeeCollector contract, which is responsible for collecting and allocating protocol fees.
+     */
+    function FEE_COLLECTOR() external returns (address);
+
+    /**
+     * @notice Returns the maximum percentage of the collateral token that the protocol charges each revenue-generating transaction.
+     */
+    function PROTOCOL_FEE_RATE() external returns (uint256);
+
+    /**
      * @notice Returns the number of decimals for this position's collateral token.
      */
     function C_DECIMALS() external returns (uint8);
@@ -46,7 +56,7 @@ interface IPosition {
     **
     ******************************************************************************/
     /**
-     * @notice Adds to this contract's short position.
+     * @notice Adds to this contract's position.
      * @param _cAmt The amount of collateral token to be supplied for this transaction-specific loan (units: C_DECIMALS).
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
@@ -58,7 +68,7 @@ interface IPosition {
         payable;
 
     /**
-     * @notice Adds to this contract's short position with permit, obviating the need for a separate approve tx.
+     * @notice Adds to this contract's position with permit, obviating the need for a separate approve tx.
      *         This function can only be used for ERC-2612-compliant tokens.
      * @param _cAmt The amount of collateral token to be supplied for this transaction-specific loan (units: C_DECIMALS).
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
@@ -83,7 +93,7 @@ interface IPosition {
     ) external payable;
 
     /**
-     * @notice Adds leverage to this contract's short position. This function can only be used for positions where the
+     * @notice Adds leverage to this contract's position. This function can only be used for positions where the
      *         collateral token is the same as the base token.
      * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
@@ -93,7 +103,7 @@ interface IPosition {
     function addLeverage(uint256 _ltv, uint256 _swapAmtOutMin, uint24 _poolFee, address _client) external payable;
 
     /**
-     * @notice Fully closes the short position.
+     * @notice Fully closes the position.
      * @param _poolFee The fee of the Uniswap pool.
      * @param _exactOutput Whether to swap exact output or exact input (true for exact output, false for exact input).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through (only used if _exactOutput is false, supply 0 if true).

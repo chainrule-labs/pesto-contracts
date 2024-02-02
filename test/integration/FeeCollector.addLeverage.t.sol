@@ -57,13 +57,8 @@ contract FeeCollectorAddLeverageTest is Test, TokenUtils, DebtUtils, FeeUtils {
 
     // Test Storage
     address public positionAddr;
-    uint256 public mainnetFork;
 
     function setUp() public {
-        // Setup: use mainnet fork
-        mainnetFork = vm.createFork(vm.envString("RPC_URL"));
-        vm.selectFork(mainnetFork);
-
         // Deploy assets
         assets = new Assets();
         address[4] memory supportedAssets = assets.getSupported();
@@ -107,12 +102,6 @@ contract FeeCollectorAddLeverageTest is Test, TokenUtils, DebtUtils, FeeUtils {
                 abi.encode(assets.prices(supportedAssets[i]))
             );
         }
-    }
-
-    /// @dev
-    // - The active fork should be the forked network created in the setup
-    function test_ActiveFork() public {
-        assertEq(vm.activeFork(), mainnetFork, "vm.activeFork() != mainnetFork");
     }
 
     /// @dev

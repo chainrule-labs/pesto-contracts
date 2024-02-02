@@ -15,6 +15,7 @@ import {
     FEE_COLLECTOR,
     PROTOCOL_FEE_RATE,
     TEST_CLIENT,
+    TEST_LTV,
     TEST_POOL_FEE,
     USDC,
     WBTC,
@@ -53,14 +54,9 @@ contract FeeCollectorAddTest is Test, TokenUtils, FeeUtils, DebtUtils {
     TestPosition[] public positions;
 
     // Test Storage
-    uint256 public mainnetFork;
     address public positionOwner = address(this);
 
     function setUp() public {
-        // Setup: use mainnet fork
-        mainnetFork = vm.createFork(vm.envString("RPC_URL"));
-        vm.selectFork(mainnetFork);
-
         // Deploy assets
         assets = new Assets();
         address[4] memory supportedAssets = assets.getSupported();
@@ -100,12 +96,6 @@ contract FeeCollectorAddTest is Test, TokenUtils, FeeUtils, DebtUtils {
                 abi.encode(assets.prices(supportedAssets[i]))
             );
         }
-    }
-
-    /// @dev
-    // - The active fork should be the forked network created in the setup
-    function test_ActiveFork() public {
-        assertEq(vm.activeFork(), mainnetFork, "vm.activeFork() != mainnetFork");
     }
 
     /// @dev
@@ -150,8 +140,8 @@ contract FeeCollectorAddTest is Test, TokenUtils, FeeUtils, DebtUtils {
             uint256 prePositionATokenBal = _getATokenBalance(positionAddr, cToken);
             assertEq(prePositionATokenBal, 0);
 
-            // Act: increase short position
-            IPosition(positionAddr).add(_cAmt, 50, 0, TEST_POOL_FEE, TEST_CLIENT);
+            // Act: increase position
+            IPosition(positionAddr).add(_cAmt, TEST_LTV, 0, TEST_POOL_FEE, TEST_CLIENT);
 
             // Post-act balances
             feeCollectorBalances.postFeeTokenBal = IERC20(cToken).balanceOf(FEE_COLLECTOR);
@@ -204,8 +194,8 @@ contract FeeCollectorAddTest is Test, TokenUtils, FeeUtils, DebtUtils {
             uint256 prePositionATokenBal = _getATokenBalance(positionAddr, cToken);
             assertEq(prePositionATokenBal, 0);
 
-            // Act: increase short position
-            IPosition(positionAddr).add(_cAmt, 50, 0, TEST_POOL_FEE, address(0));
+            // Act: increase position
+            IPosition(positionAddr).add(_cAmt, TEST_LTV, 0, TEST_POOL_FEE, address(0));
 
             // Post-act balances
             feeCollectorBalances.postFeeTokenBal = IERC20(cToken).balanceOf(FEE_COLLECTOR);

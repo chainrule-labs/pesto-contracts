@@ -19,15 +19,10 @@ contract FeeCollectorClientFeesTest is Test, TokenUtils {
 
     // Test Storage
     address[] public supportedAssets;
-    uint256 public mainnetFork;
     address public owner = address(this);
     address public feeCollectorAddr;
 
     function setUp() public {
-        // Setup: use mainnet fork
-        mainnetFork = vm.createFork(vm.envString("RPC_URL"));
-        vm.selectFork(mainnetFork);
-
         // Deploy assets
         assets = new Assets();
         supportedAssets = assets.getSupported();
@@ -36,12 +31,6 @@ contract FeeCollectorClientFeesTest is Test, TokenUtils {
         vm.prank(CONTRACT_DEPLOYER);
         feeCollector = new FeeCollector(CONTRACT_DEPLOYER);
         feeCollectorAddr = address(feeCollector);
-    }
-
-    /// @dev
-    // - The active fork should be the forked network created in the setup
-    function test_ActiveFork() public {
-        assertEq(vm.activeFork(), mainnetFork, "vm.activeFork() != mainnetFork");
     }
 
     /// @dev
@@ -62,7 +51,6 @@ contract FeeCollectorClientFeesTest is Test, TokenUtils {
 
             // Setup
             address feeToken = supportedAssets[i];
-            // uint256 clientTakeRate = 50;
 
             // Set client rate
             vm.prank(CONTRACT_DEPLOYER);

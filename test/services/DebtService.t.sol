@@ -10,7 +10,7 @@ import { AdminService } from "src/services/AdminService.sol";
 import { DebtServiceHarness } from "test/harness/DebtServiceHarness.t.sol";
 import { DebtUtils } from "test/common/utils/DebtUtils.t.sol";
 import { TokenUtils } from "test/common/utils/TokenUtils.t.sol";
-import { Assets, AAVE_ORACLE, AAVE_POOL, REPAY_BUFFER, WITHDRAW_BUFFER } from "test/common/Constants.t.sol";
+import { Assets, AAVE_ORACLE, AAVE_POOL, REPAY_BUFFER, TEST_LTV, WITHDRAW_BUFFER } from "test/common/Constants.t.sol";
 import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IPool } from "src/interfaces/aave/IPool.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
@@ -24,14 +24,9 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
     // Test Storage
     DebtServiceHarness[] public debtServices;
     address[4] public supportedAssets;
-    uint256 public mainnetFork;
     address public owner = address(this);
 
     function setUp() public {
-        // Setup: use mainnet fork
-        mainnetFork = vm.createFork(vm.envString("RPC_URL"));
-        vm.selectFork(mainnetFork);
-
         assets = new Assets();
         supportedAssets = assets.getSupported();
 
@@ -50,12 +45,6 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
                 }
             }
         }
-    }
-
-    /// @dev
-    // - The active fork should be the forked network created in the setup
-    function test_ActiveFork() public {
-        assertEq(vm.activeFork(), mainnetFork, "vm.activeFork() != mainnetFork");
     }
 
     /// @dev
@@ -136,7 +125,6 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
     // - The above should be true for all supported debt tokens.
     function testFuzz_Repay(uint256 _payment) public {
         // Setup
-        uint256 ltv = 50;
         DebtServiceHarness[4] memory filteredDebtServices = _getFilteredDebtServicesByDToken(debtServices);
 
         for (uint256 i; i < filteredDebtServices.length; i++) {
@@ -146,7 +134,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             // Borrow
             address cToken = debtServices[i].C_TOKEN();
             uint256 cAmt = assets.maxCAmts(cToken);
-            uint256 dAmt = debtServices[i].exposed_borrow(cAmt, ltv);
+            uint256 dAmt = debtServices[i].exposed_borrow(cAmt, TEST_LTV);
 
             // Pre-act data
             uint256 preDebtAmt = debtServices[i].exposed_getDebtAmt();
@@ -210,13 +198,12 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             // Setup
             address debtService = address(debtServices[i]);
             address cToken = debtServices[i].C_TOKEN();
-            uint256 ltv = 50;
 
             // Assumption
             _cAmt = bound(_cAmt, assets.minCAmts(cToken), assets.maxCAmts(cToken));
 
             // Borrow
-            debtServices[i].exposed_borrow(assets.maxCAmts(cToken), ltv);
+            debtServices[i].exposed_borrow(assets.maxCAmts(cToken), TEST_LTV);
 
             // Act
             uint256 maxWithdrawAmt = debtServices[i].exposed_getMaxWithdrawAmt(WITHDRAW_BUFFER);
@@ -258,13 +245,12 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             // Setup
             address debtService = address(debtServices[i]);
             address cToken = debtServices[i].C_TOKEN();
-            uint256 ltv = 50;
 
             // Assumption
             _cAmt = bound(_cAmt, assets.minCAmts(cToken), assets.maxCAmts(cToken));
 
             // Borrow
-            debtServices[i].exposed_borrow(assets.maxCAmts(cToken), ltv);
+            debtServices[i].exposed_borrow(assets.maxCAmts(cToken), TEST_LTV);
 
             // Act
             uint256 maxWithdrawAmt = debtServices[i].exposed_getMaxWithdrawAmt(WITHDRAW_BUFFER);
@@ -283,14 +269,13 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
     // - The above should be true for all supported debt tokens.
     function test_GetDebtAmt() public {
         // Setup
-        uint256 ltv = 50;
         DebtServiceHarness[4] memory filteredDebtServices = _getFilteredDebtServicesByDToken(debtServices);
         assertEq(filteredDebtServices.length, 4);
 
         for (uint256 i; i < filteredDebtServices.length; i++) {
             address cToken = debtServices[i].C_TOKEN();
             uint256 cAmt = assets.maxCAmts(cToken);
-            uint256 dAmt = debtServices[i].exposed_borrow(cAmt, ltv);
+            uint256 dAmt = debtServices[i].exposed_borrow(cAmt, TEST_LTV);
 
             // Act
             uint256 debtAmt = debtServices[i].exposed_getDebtAmt();
@@ -308,7 +293,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             // Setup
             address debtService = address(debtServices[i]);
             address cToken = debtServices[i].C_TOKEN();
-            debtServices[i].exposed_borrow(assets.maxCAmts(cToken), 50);
+            debtServices[i].exposed_borrow(assets.maxCAmts(cToken), TEST_LTV);
 
             // Assumptions
             _cAmt = bound(_cAmt, assets.minCAmts(cToken), assets.maxCAmts(cToken));
@@ -340,7 +325,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             // Setup
             address debtService = address(debtServices[i]);
             address cToken = debtServices[i].C_TOKEN();
-            debtServices[i].exposed_borrow(assets.maxCAmts(cToken), 50);
+            debtServices[i].exposed_borrow(assets.maxCAmts(cToken), TEST_LTV);
 
             // Assumptions
             vm.assume(_sender != owner);
@@ -362,7 +347,6 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
     // - The owner's D_TOKEN balance should decrease by the amount repaid.
     function testFuzz_RepayAfterClose(uint256 _payment) public {
         // Setup
-        uint256 ltv = 50;
         DebtServiceHarness[4] memory filteredDebtServices = _getFilteredDebtServicesByDToken(debtServices);
 
         for (uint256 i; i < filteredDebtServices.length; i++) {
@@ -372,7 +356,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             // Borrow
             address cToken = debtServices[i].C_TOKEN();
             uint256 cAmt = assets.maxCAmts(cToken);
-            uint256 dAmt = debtServices[i].exposed_borrow(cAmt, ltv);
+            uint256 dAmt = debtServices[i].exposed_borrow(cAmt, TEST_LTV);
 
             // Fund owner with dAmt of D_TOKEN
             _fund(owner, debtServices[i].D_TOKEN(), dAmt);
@@ -404,7 +388,6 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
     // - It should revert with Unauthorized() error when called by an unauthorized sender.
     function testFuzz_CannotRepayAfterClose(uint256 _payment, address _sender) public {
         // Setup
-        uint256 ltv = 50;
         DebtServiceHarness[4] memory filteredDebtServices = _getFilteredDebtServicesByDToken(debtServices);
 
         for (uint256 i; i < filteredDebtServices.length; i++) {
@@ -414,7 +397,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             // Borrow
             address cToken = debtServices[i].C_TOKEN();
             uint256 cAmt = assets.maxCAmts(cToken);
-            uint256 dAmt = debtServices[i].exposed_borrow(cAmt, ltv);
+            uint256 dAmt = debtServices[i].exposed_borrow(cAmt, TEST_LTV);
 
             // Fund owner with dAmt of D_TOKEN
             _fund(owner, debtServices[i].D_TOKEN(), dAmt);
@@ -444,14 +427,9 @@ contract DebtServicePermitTest is Test, DebtUtils, TokenUtils {
     DebtServiceHarness[] public debtServices;
     VmSafe.Wallet public wallet;
     address[4] public supportedAssets;
-    uint256 public mainnetFork;
     address public owner;
 
     function setUp() public {
-        // Setup: use mainnet fork
-        mainnetFork = vm.createFork(vm.envString("RPC_URL"));
-        vm.selectFork(mainnetFork);
-
         // Deploy Assets contract
         assets = new Assets();
         supportedAssets = assets.getSupported();
@@ -486,7 +464,7 @@ contract DebtServicePermitTest is Test, DebtUtils, TokenUtils {
             // Setup
             address debtService = address(debtServices[i]);
             address cToken = debtServices[i].C_TOKEN();
-            debtServices[i].exposed_borrow(assets.maxCAmts(cToken), 50);
+            debtServices[i].exposed_borrow(assets.maxCAmts(cToken), TEST_LTV);
 
             // Assumptions
             _cAmt = bound(_cAmt, assets.minCAmts(cToken), assets.maxCAmts(cToken));
@@ -522,7 +500,7 @@ contract DebtServicePermitTest is Test, DebtUtils, TokenUtils {
             // Setup
             address debtService = address(debtServices[i]);
             address cToken = debtServices[i].C_TOKEN();
-            debtServices[i].exposed_borrow(assets.maxCAmts(cToken), 50);
+            debtServices[i].exposed_borrow(assets.maxCAmts(cToken), TEST_LTV);
 
             // Assumptions
             _cAmt = bound(_cAmt, assets.minCAmts(cToken), assets.maxCAmts(cToken));
@@ -554,7 +532,7 @@ contract DebtServicePermitTest is Test, DebtUtils, TokenUtils {
             // Borrow
             address cToken = debtServices[i].C_TOKEN();
             address dToken = debtServices[i].D_TOKEN();
-            uint256 dAmt = debtServices[i].exposed_borrow(assets.maxCAmts(cToken), 50);
+            uint256 dAmt = debtServices[i].exposed_borrow(assets.maxCAmts(cToken), TEST_LTV);
 
             // Fund owner with dAmt of D_TOKEN
             _fund(owner, dToken, dAmt);
@@ -595,7 +573,7 @@ contract DebtServicePermitTest is Test, DebtUtils, TokenUtils {
             // Borrow
             address cToken = debtServices[i].C_TOKEN();
             address dToken = debtServices[i].D_TOKEN();
-            uint256 dAmt = debtServices[i].exposed_borrow(assets.maxCAmts(cToken), 50);
+            uint256 dAmt = debtServices[i].exposed_borrow(assets.maxCAmts(cToken), TEST_LTV);
 
             // Fund owner with dAmt of D_TOKEN
             _fund(owner, dToken, dAmt);

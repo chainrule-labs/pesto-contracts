@@ -34,6 +34,13 @@ interface IFeeCollector {
     function balances(address _client, address _token) external view returns (uint256);
 
     /**
+     * @notice Returns the take rate of the specified client operator; the percentage of the client rate that the operator keeps.
+     * @param _client A client operator address.
+     * @return clientTakeRate The percentage of the client rate that the operator keeps.
+     */
+    function clientTakeRates(address _client) external returns (uint256);
+
+    /**
      * @notice Collects fees from Position contracts when collateral is added.
      * @param _client The address where a client operator will receive protocols fees.
      * @param _token The token to collect fees in (the collateral token of the calling Position contract).
