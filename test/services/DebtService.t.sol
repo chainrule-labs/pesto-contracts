@@ -5,6 +5,8 @@ pragma solidity ^0.8.21;
 import { Test } from "forge-std/Test.sol";
 import { VmSafe } from "forge-std/Vm.sol";
 
+import "forge-std/console.sol";
+
 // Local Imports
 import { AdminService } from "src/services/AdminService.sol";
 import { DebtServiceHarness } from "test/harness/DebtServiceHarness.t.sol";
@@ -155,11 +157,11 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
     }
 
     /// @dev
-    // - The position contract's aToken balance should decrease by the amount withdrawn (it should go to 0).
+    // - The position contract's aToken balance should decrease by the amount withdrawn.
     // - The owner's cToken balance should increase by the amount withdrawn.
     // - The above should be true for all supported collateral tokens.
     // - The above should work for a range of withdawal amounts.
-    function testFuzz_Withdraw(uint256 _cAmt) public {
+    function testFuzz_WithdrawPartial(uint256 _cAmt, uint256 _withdrawAmt) public {
         DebtServiceHarness[4] memory filteredDebtServices = _getFilteredDebtServicesByCToken(debtServices);
 
         for (uint256 i; i < filteredDebtServices.length; i++) {
@@ -173,13 +175,59 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             vm.startPrank(debtService);
             IERC20(cToken).approve(AAVE_POOL, _cAmt);
             IPool(AAVE_POOL).supply(cToken, _cAmt, debtService, 0);
+            vm.stopPrank();
+
+            // Pre-act data
+            uint256 preATokenBal = _getATokenBalance(debtService, cToken);
+            uint256 preOwnerCTokenBal = IERC20(cToken).balanceOf(owner);
+
+            // Assumptions
+            vm.assume(_withdrawAmt > 0 && _withdrawAmt <= preATokenBal);
+
+            // Act
+            vm.prank(owner);
+            debtServices[i].withdraw(owner, _withdrawAmt);
+
+            // Post-act data
+            uint256 postATokenBal = _getATokenBalance(debtService, cToken);
+            uint256 postOwnerCTokenBal = IERC20(cToken).balanceOf(owner);
+
+            // Assert
+            assertApproxEqAbs(postATokenBal, preATokenBal - _withdrawAmt, 1);
+            assertEq(postOwnerCTokenBal, preOwnerCTokenBal + _withdrawAmt);
+        }
+    }
+
+    /// @dev
+    // - The position contract's aToken balance should decrease to 0.
+    // - The owner's cToken balance should increase by the amount withdrawn.
+    // - The above should be true for all supported collateral tokens.
+    function testFuzz_WithdrawFull(uint256 _cAmt) public {
+        DebtServiceHarness[4] memory filteredDebtServices = _getFilteredDebtServicesByCToken(debtServices);
+
+        for (uint256 i; i < filteredDebtServices.length; i++) {
+            // Setup
+            address debtService = address(debtServices[i]);
+            address cToken = debtServices[i].C_TOKEN();
+
+            _cAmt = bound(_cAmt, assets.minCAmts(cToken), assets.maxCAmts(cToken));
+
+            // Supply collateral
+            vm.startPrank(debtService);
+            IERC20(cToken).approve(AAVE_POOL, _cAmt);
+            IPool(AAVE_POOL).supply(cToken, _cAmt, debtService, 0);
+            vm.stopPrank();
+
+            // Get max withdraw amount - will always be type(uint256).max because the contract has no debt
+            uint256 maxWithdrawAmt = debtServices[i].getMaxWithdrawAmt(WITHDRAW_BUFFER);
 
             // Pre-act data
             uint256 preATokenBal = _getATokenBalance(debtService, cToken);
             uint256 preOwnerCTokenBal = IERC20(cToken).balanceOf(owner);
 
             // Act
-            debtServices[i].exposed_withdraw(owner, WITHDRAW_BUFFER);
+            vm.prank(owner);
+            debtServices[i].withdraw(owner, maxWithdrawAmt);
 
             // Post-act data
             uint256 postATokenBal = _getATokenBalance(debtService, cToken);
@@ -206,7 +254,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             debtServices[i].exposed_borrow(assets.maxCAmts(cToken), TEST_LTV);
 
             // Act
-            uint256 maxWithdrawAmt = debtServices[i].exposed_getMaxWithdrawAmt(WITHDRAW_BUFFER);
+            uint256 maxWithdrawAmt = debtServices[i].getMaxWithdrawAmt(WITHDRAW_BUFFER);
 
             vm.prank(debtService);
             IPool(AAVE_POOL).withdraw(cToken, maxWithdrawAmt, debtService);
@@ -231,7 +279,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             IPool(AAVE_POOL).supply(cToken, _cAmt, debtService, 0);
 
             // Act
-            uint256 maxWithdrawAmt = debtServices[i].exposed_getMaxWithdrawAmt(WITHDRAW_BUFFER);
+            uint256 maxWithdrawAmt = debtServices[i].getMaxWithdrawAmt(WITHDRAW_BUFFER);
 
             IPool(AAVE_POOL).withdraw(cToken, maxWithdrawAmt, debtService);
             assert(true);
@@ -253,7 +301,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             debtServices[i].exposed_borrow(assets.maxCAmts(cToken), TEST_LTV);
 
             // Act
-            uint256 maxWithdrawAmt = debtServices[i].exposed_getMaxWithdrawAmt(WITHDRAW_BUFFER);
+            uint256 maxWithdrawAmt = debtServices[i].getMaxWithdrawAmt(WITHDRAW_BUFFER);
 
             // Add extra to max withdraw
             uint256 minAmount = maxWithdrawAmt / 100_000;
@@ -345,7 +393,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
     /// @dev
     // - The contract's debt amount should decrease by amount repaid.
     // - The owner's D_TOKEN balance should decrease by the amount repaid.
-    function testFuzz_RepayAfterClose(uint256 _payment) public {
+    function testFuzz_RepayAndWithdraw(uint256 _payment) public {
         // Setup
         DebtServiceHarness[4] memory filteredDebtServices = _getFilteredDebtServicesByDToken(debtServices);
 
@@ -372,7 +420,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             IERC20(debtServices[i].D_TOKEN()).approve(debtService, _payment);
 
             // Act
-            debtServices[i].repayAfterClose(_payment, WITHDRAW_BUFFER);
+            debtServices[i].repayAndWithdraw(_payment, WITHDRAW_BUFFER);
 
             // Post-act data
             uint256 postDebtAmt = debtServices[i].exposed_getDebtAmt();
@@ -386,7 +434,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
 
     /// @dev
     // - It should revert with Unauthorized() error when called by an unauthorized sender.
-    function testFuzz_CannotRepayAfterClose(uint256 _payment, address _sender) public {
+    function testFuzz_CannotRepayAndWithdraw(uint256 _payment, address _sender) public {
         // Setup
         DebtServiceHarness[4] memory filteredDebtServices = _getFilteredDebtServicesByDToken(debtServices);
 
@@ -412,7 +460,7 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             // Act
             vm.prank(_sender);
             vm.expectRevert(AdminService.Unauthorized.selector);
-            debtServices[i].repayAfterClose(_payment, WITHDRAW_BUFFER);
+            debtServices[i].repayAndWithdraw(_payment, WITHDRAW_BUFFER);
         }
     }
 }
@@ -524,7 +572,7 @@ contract DebtServicePermitTest is Test, DebtUtils, TokenUtils {
     // - The contract's debt amount should decrease by amount repaid.
     // - The owner's D_TOKEN balance should decrease by the amount repaid.
     // - The act should be accomplished without a separate approve tx.
-    function testFuzz_RepayAfterCloseWithPermit(uint256 _payment) public {
+    function testFuzz_RepayAndWithdrawWithPermit(uint256 _payment) public {
         // Setup
         DebtServiceHarness[4] memory filteredDebtServices = _getFilteredDebtServicesByDToken(debtServices);
 
@@ -551,7 +599,7 @@ contract DebtServicePermitTest is Test, DebtUtils, TokenUtils {
 
             // Act
             vm.prank(owner);
-            debtServices[i].repayAfterCloseWithPermit(_payment, WITHDRAW_BUFFER, permitTimestamp, v, r, s);
+            debtServices[i].repayAndWithdrawWithPermit(_payment, WITHDRAW_BUFFER, permitTimestamp, v, r, s);
 
             // Post-act data
             uint256 postDebtAmt = debtServices[i].exposed_getDebtAmt();
@@ -565,7 +613,7 @@ contract DebtServicePermitTest is Test, DebtUtils, TokenUtils {
 
     /// @dev
     // - It should revert with Unauthorized() error when called by an unauthorized sender.
-    function testFuzz_CannotRepayAfterCloseWithPermit(uint256 _payment, address _sender) public {
+    function testFuzz_CannotRepayAndWithdrawWithPermit(uint256 _payment, address _sender) public {
         // Setup
         DebtServiceHarness[4] memory filteredDebtServices = _getFilteredDebtServicesByDToken(debtServices);
 
@@ -590,7 +638,7 @@ contract DebtServicePermitTest is Test, DebtUtils, TokenUtils {
             // Act
             vm.prank(_sender);
             vm.expectRevert(AdminService.Unauthorized.selector);
-            debtServices[i].repayAfterCloseWithPermit(_payment, WITHDRAW_BUFFER, permitTimestamp, v, r, s);
+            debtServices[i].repayAndWithdrawWithPermit(_payment, WITHDRAW_BUFFER, permitTimestamp, v, r, s);
         }
     }
 }

@@ -73,35 +73,6 @@ contract DebtService is AdminService {
     }
 
     /**
-     * @notice Withdraws collateral token from Aave to specified recipient.
-     * @param _recipient The recipient of the funds.
-     * @param _buffer The amount of collateral left as safety buffer for tx to go through (at least 100_000 recommended, units: 8 decimals).
-     */
-    function _withdraw(address _recipient, uint256 _buffer) internal {
-        IPool(AAVE_POOL).withdraw(C_TOKEN, _getMaxWithdrawAmt(_buffer), _recipient);
-    }
-
-    /**
-     * @notice Calculates maximum withdraw amount.
-     * uint256 cNeededUSD = (dTotalUSD * 1e4) / liqThreshold;
-     * uint256 maxWithdrawUSD = cTotalUSD - cNeededUSD - _buffer; (units: 8 decimals)
-     * maxWithdrawAmt = (maxWithdrawUSD * 10 ** (C_DECIMALS)) / cPriceUSD; (units: C_DECIMALS)
-     * Docs: https://docs.aave.com/developers/guides/liquidations#how-is-health-factor-calculated
-     */
-    function _getMaxWithdrawAmt(uint256 _buffer) internal view returns (uint256 maxWithdrawAmt) {
-        (uint256 cTotalUSD, uint256 dTotalUSD,, uint256 liqThreshold,,) =
-            IPool(AAVE_POOL).getUserAccountData(address(this));
-        uint256 cPriceUSD = IAaveOracle(AAVE_ORACLE).getAssetPrice(C_TOKEN);
-
-        if (dTotalUSD == 0) {
-            maxWithdrawAmt = type(uint256).max;
-        } else {
-            maxWithdrawAmt =
-                ((cTotalUSD - ((dTotalUSD * 1e4) / liqThreshold) - _buffer) * 10 ** (C_DECIMALS)) / cPriceUSD;
-        }
-    }
-
-    /**
      * @notice Returns this contract's total debt (principle + interest).
      * @return outstandingDebt This contract's total debt + small buffer (units: D_DECIMALS).
      */
@@ -148,17 +119,26 @@ contract DebtService is AdminService {
     }
 
     /**
+     * @notice Withdraws collateral token from Aave to specified recipient.
+     * @param _recipient The recipient of the funds.
+     * @param _cAmt The amount of collateral to be withdrawn (units: C_DECIMALS). Add a small buffer if withdrawing max amount.
+     */
+    function withdraw(address _recipient, uint256 _cAmt) public payable onlyOwner {
+        IPool(AAVE_POOL).withdraw(C_TOKEN, _cAmt, _recipient);
+    }
+
+    /**
      * @notice Repays any outstanding debt to Aave and transfers remaining collateral from Aave to owner.
      * @param _dAmt The amount of debt token to repay to Aave (units: D_DECIMALS).
      *              To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
-     * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (at least 100_000 recommended, units: 8 decimals).
+     * @param _withdrawBuffer The amount of collateral, in USD, left as safety buffer for tx to go through (at least 100_000 recommended, units: 8 decimals).
      */
-    function repayAfterClose(uint256 _dAmt, uint256 _withdrawBuffer) public payable onlyOwner {
+    function repayAndWithdraw(uint256 _dAmt, uint256 _withdrawBuffer) public payable onlyOwner {
         SafeTransferLib.safeTransferFrom(ERC20(D_TOKEN), msg.sender, address(this), _dAmt);
 
         _repay(_dAmt);
 
-        _withdraw(OWNER, _withdrawBuffer);
+        withdraw(OWNER, getMaxWithdrawAmt(_withdrawBuffer));
     }
 
     /**
@@ -166,13 +146,13 @@ contract DebtService is AdminService {
      *         with permit, obviating the need for a separate approve tx. This function can only be used for ERC-2612-compliant tokens.
      * @param _dAmt The amount of debt token to repay to Aave (units: D_DECIMALS).
      *              To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
-     * @param _withdrawBuffer The amount of collateral left as safety buffer for tx to go through (at least 100_000 recommended, units: 8 decimals).
+     * @param _withdrawBuffer The amount of collateral, in USD, left as safety buffer for tx to go through (at least 100_000 recommended, units: 8 decimals).
      * @param _deadline The expiration timestamp of the permit.
      * @param _v The V parameter of ERC712 signature for the permit.
      * @param _r The R parameter of ERC712 signature for the permit.
      * @param _s The S parameter of ERC712 signature for the permit.
      */
-    function repayAfterCloseWithPermit(
+    function repayAndWithdrawWithPermit(
         uint256 _dAmt,
         uint256 _withdrawBuffer,
         uint256 _deadline,
@@ -184,6 +164,28 @@ contract DebtService is AdminService {
         IERC20Permit(D_TOKEN).permit(msg.sender, address(this), _dAmt, _deadline, _v, _r, _s);
 
         // 2. Repay
-        repayAfterClose(_dAmt, _withdrawBuffer);
+        repayAndWithdraw(_dAmt, _withdrawBuffer);
+    }
+
+    /**
+     * @notice Calculates the maximum amount of collateral that can be withdrawn.
+     * @param _buffer The amount of collateral, in USD, left as safety buffer for tx to go through (at least 100_000 recommended, units: 8 decimals).
+     * @return maxWithdrawAmt The maximum amount of collateral that can be withdrawn (units: C_DECIMALS).
+     * uint256 cNeededUSD = (dTotalUSD * 1e4) / liqThreshold;
+     * uint256 maxWithdrawUSD = cTotalUSD - cNeededUSD - _buffer; (units: 8 decimals)
+     * maxWithdrawAmt = (maxWithdrawUSD * 10 ** (C_DECIMALS)) / cPriceUSD; (units: C_DECIMALS)
+     * Docs: https://docs.aave.com/developers/guides/liquidations#how-is-health-factor-calculated
+     */
+    function getMaxWithdrawAmt(uint256 _buffer) public view returns (uint256 maxWithdrawAmt) {
+        (uint256 cTotalUSD, uint256 dTotalUSD,, uint256 liqThreshold,,) =
+            IPool(AAVE_POOL).getUserAccountData(address(this));
+        uint256 cPriceUSD = IAaveOracle(AAVE_ORACLE).getAssetPrice(C_TOKEN);
+
+        if (dTotalUSD == 0) {
+            maxWithdrawAmt = type(uint256).max;
+        } else {
+            maxWithdrawAmt =
+                ((cTotalUSD - ((dTotalUSD * 1e4) / liqThreshold) - _buffer) * 10 ** (C_DECIMALS)) / cPriceUSD;
+        }
     }
 }

@@ -25,14 +25,6 @@ contract DebtServiceHarness is DebtService {
         _repay(_dAmt);
     }
 
-    function exposed_withdraw(address _recipient, uint256 _buffer) external {
-        _withdraw(_recipient, _buffer);
-    }
-
-    function exposed_getMaxWithdrawAmt(uint256 _buffer) external view returns (uint256) {
-        return _getMaxWithdrawAmt(_buffer);
-    }
-
     function exposed_getDebtAmt() external view returns (uint256) {
         return _getDebtAmt();
     }

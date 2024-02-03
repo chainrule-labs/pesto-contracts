@@ -12,7 +12,7 @@ interface IPositionFactory {
     /**
      * @notice Returns the owner of this contract.
      */
-    function owner() external returns (address);
+    function owner() external view returns (address);
 
     /**
      * @notice Returns the address of an owner's specified Position contract.
