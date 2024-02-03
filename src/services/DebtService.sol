@@ -121,7 +121,7 @@ contract DebtService is AdminService {
     /**
      * @notice Withdraws collateral token from Aave to specified recipient.
      * @param _recipient The recipient of the funds.
-     * @param _cAmt The amount of collateral to be withdrawn (units: C_DECIMALS). Add a small buffer if withdrawing max amount.
+     * @param _cAmt The amount of collateral to be withdrawn (units: C_DECIMALS).
      */
     function withdraw(address _recipient, uint256 _cAmt) public payable onlyOwner {
         IPool(AAVE_POOL).withdraw(C_TOKEN, _cAmt, _recipient);
