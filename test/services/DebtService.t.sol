@@ -5,8 +5,6 @@ pragma solidity ^0.8.21;
 import { Test } from "forge-std/Test.sol";
 import { VmSafe } from "forge-std/Vm.sol";
 
-import "forge-std/console.sol";
-
 // Local Imports
 import { AdminService } from "src/services/AdminService.sol";
 import { DebtServiceHarness } from "test/harness/DebtServiceHarness.t.sol";

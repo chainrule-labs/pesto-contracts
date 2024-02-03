@@ -169,14 +169,14 @@ contract DebtService is AdminService {
 
     /**
      * @notice Calculates the maximum amount of collateral that can be withdrawn.
-     * @param _buffer The amount of collateral, in USD, left as safety buffer for tx to go through (at least 100_000 recommended, units: 8 decimals).
+     * @param _withdrawBuffer The amount of collateral, in USD, left as safety buffer for tx to go through (at least 100_000 recommended, units: 8 decimals).
      * @return maxWithdrawAmt The maximum amount of collateral that can be withdrawn (units: C_DECIMALS).
      * uint256 cNeededUSD = (dTotalUSD * 1e4) / liqThreshold;
-     * uint256 maxWithdrawUSD = cTotalUSD - cNeededUSD - _buffer; (units: 8 decimals)
+     * uint256 maxWithdrawUSD = cTotalUSD - cNeededUSD - _withdrawBuffer; (units: 8 decimals)
      * maxWithdrawAmt = (maxWithdrawUSD * 10 ** (C_DECIMALS)) / cPriceUSD; (units: C_DECIMALS)
      * Docs: https://docs.aave.com/developers/guides/liquidations#how-is-health-factor-calculated
      */
-    function getMaxWithdrawAmt(uint256 _buffer) public view returns (uint256 maxWithdrawAmt) {
+    function getMaxWithdrawAmt(uint256 _withdrawBuffer) public view returns (uint256 maxWithdrawAmt) {
         (uint256 cTotalUSD, uint256 dTotalUSD,, uint256 liqThreshold,,) =
             IPool(AAVE_POOL).getUserAccountData(address(this));
         uint256 cPriceUSD = IAaveOracle(AAVE_ORACLE).getAssetPrice(C_TOKEN);
@@ -185,7 +185,7 @@ contract DebtService is AdminService {
             maxWithdrawAmt = type(uint256).max;
         } else {
             maxWithdrawAmt =
-                ((cTotalUSD - ((dTotalUSD * 1e4) / liqThreshold) - _buffer) * 10 ** (C_DECIMALS)) / cPriceUSD;
+                ((cTotalUSD - ((dTotalUSD * 1e4) / liqThreshold) - _withdrawBuffer) * 10 ** (C_DECIMALS)) / cPriceUSD;
         }
     }
 }
