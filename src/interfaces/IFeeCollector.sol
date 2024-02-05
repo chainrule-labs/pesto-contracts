@@ -11,12 +11,12 @@ interface IFeeCollector {
     /**
      * @notice Returns the owner of this contract.
      */
-    function owner() external returns (address);
+    function owner() external view returns (address);
 
     /**
      * @notice Returns the current client rate.
      */
-    function clientRate() external returns (uint256);
+    function clientRate() external view returns (uint256);
 
     /**
      * @notice Returns the total balance for the specified token across all client operators.
@@ -38,7 +38,7 @@ interface IFeeCollector {
      * @param _client A client operator address.
      * @return clientTakeRate The percentage of the client rate that the operator keeps.
      */
-    function clientTakeRates(address _client) external returns (uint256);
+    function clientTakeRates(address _client) external view returns (uint256);
 
     /**
      * @notice Collects fees from Position contracts when collateral is added.

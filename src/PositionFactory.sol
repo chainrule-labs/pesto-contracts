@@ -59,6 +59,11 @@ contract PositionFactory is Ownable {
         return positionsLookup[_positionOwner];
     }
 
+    /* ****************************************************************************
+    **
+    **  ADMIN FUNCTIONS
+    **
+    ******************************************************************************/
     /**
      * @notice Allows OWNER to withdraw all of this contract's native token balance.
      */

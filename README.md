@@ -18,9 +18,8 @@ The following outlines principles for core protocol funcitonality.
 
 Logic:
 
--   None at the moment🙂
-
-Tests:
+-   [ ] Add function that lets users supply bToken to Aave to earn interest
+        Tests:
 
 -   None at the moment🙂
 
