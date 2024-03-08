@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 // Local Imports
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
