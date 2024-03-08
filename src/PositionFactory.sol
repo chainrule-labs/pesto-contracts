@@ -82,11 +82,6 @@ contract PositionFactory is Ownable {
     }
 
     /**
-     * @notice Executes when native is sent to this contract through a non-existent function.
-     */
-    fallback() external payable { } // solhint-disable-line no-empty-blocks
-
-    /**
      * @notice Executes when native is sent to this contract with a plain transaction.
      */
     receive() external payable { } // solhint-disable-line no-empty-blocks
