@@ -107,11 +107,16 @@ interface IPosition {
      * @param _poolFee The fee of the Uniswap pool.
      * @param _exactOutput Whether to swap exact output or exact input (true for exact output, false for exact input).
      * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through (only used if _exactOutput is false, supply 0 if true).
-     * @param _withdrawBuffer The amount of collateral, in USD, left as safety buffer for tx to go through (at least 100_000 recommended, units: 8 decimals).
+     * @param _withdrawCAmt The amount of C_TOKEN to withdraw (units: C_DECIMALS).
+     * @param _withdrawBAmt The amount of B_TOKEN to withdraw (units: B_DECIMALS).
      */
-    function close(uint24 _poolFee, bool _exactOutput, uint256 _swapAmtOutMin, uint256 _withdrawBuffer)
-        external
-        payable;
+    function close(
+        uint24 _poolFee,
+        bool _exactOutput,
+        uint256 _swapAmtOutMin,
+        uint256 _withdrawCAmt,
+        uint256 _withdrawBAmt
+    ) external payable;
 
     /**
      * @notice Increases the collateral amount backing this contract's loan.
@@ -134,31 +139,30 @@ interface IPosition {
 
     /**
      * @notice Withdraws collateral token from Aave to specified recipient.
+     * @param _token The address of the collateral token to be withdrawn (C_TOKEN or B_TOKEN).
+     * @param _amt The amount of collateral to be withdrawn (units: C_DECIMALS or B_DECIMALS).
      * @param _recipient The recipient of the funds.
-     * @param _cAmt The amount of collateral to be withdrawn (units: C_DECIMALS).
      */
-    function withdraw(address _recipient, uint256 _cAmt) external payable;
+    function withdraw(address _token, uint256 _amt, address _recipient) external payable;
 
     /**
      * @notice Repays any outstanding debt to Aave and transfers remaining collateral from Aave to owner.
      * @param _dAmt The amount of debt token to repay to Aave (units: D_DECIMALS).
      *              To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
-     * @param _withdrawBuffer The amount of collateral, in USD, left as safety buffer for tx to go through (at least 100_000 recommended, units: 8 decimals).
      */
-    function repayAndWithdraw(uint256 _dAmt, uint256 _withdrawBuffer) external payable;
+    function repay(uint256 _dAmt) external payable;
 
     /**
      * @notice Repays any outstanding debt to Aave and transfers remaining collateral from Aave to owner,
      *         with permit, obviating the need for a separate approve tx. This function can only be used for ERC-2612-compliant tokens.
      * @param _dAmt The amount of debt token to repay to Aave (units: D_DECIMALS).
      *              To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
-     * @param _withdrawBuffer The amount of collateral, in USD, left as safety buffer for tx to go through (at least 100_000 recommended, units: 8 decimals).
      * @param _deadline The expiration timestamp of the permit.
      * @param _v The V parameter of ERC712 signature for the permit.
      * @param _r The R parameter of ERC712 signature for the permit.
      * @param _s The S parameter of ERC712 signature for the permit.
      */
-    function repayAndWithdrawWithPermit(
+    function repayWithPermit(
         uint256 _dAmt,
         uint256 _withdrawBuffer,
         uint256 _deadline,
@@ -166,17 +170,6 @@ interface IPosition {
         bytes32 _r,
         bytes32 _s
     ) external payable;
-
-    /**
-     * @notice Calculates the maximum amount of collateral that can be withdrawn.
-     * @param _withdrawBuffer The amount of collateral, in USD, left as safety buffer for tx to go through (at least 100_000 recommended, units: 8 decimals).
-     * @return maxWithdrawAmt The maximum amount of collateral that can be withdrawn (units: C_DECIMALS).
-     * uint256 cNeededUSD = (dTotalUSD * 1e4) / liqThreshold;
-     * uint256 maxWithdrawUSD = cTotalUSD - cNeededUSD - _withdrawBuffer; (units: 8 decimals)
-     * maxWithdrawAmt = (maxWithdrawUSD * 10 ** (C_DECIMALS)) / cPriceUSD; (units: C_DECIMALS)
-     * Docs: https://docs.aave.com/developers/guides/liquidations#how-is-health-factor-calculated
-     */
-    function getMaxWithdrawAmt(uint256 _withdrawBuffer) external view returns (uint256 maxWithdrawAmt);
 
     /* ****************************************************************************
     **

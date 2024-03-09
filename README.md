@@ -19,7 +19,15 @@ The following outlines principles for core protocol funcitonality.
 Logic:
 
 -   [ ] Add function that lets users supply bToken to Aave to earn interest
-        Tests:
+
+Tests:
+
+-   [x] Test position close integration test with gains
+-   [x] Test position close integration test with gains
+-   [ ] Test newly added \_borrow function
+-   [ ] Update addLeverage integration tests
+-   [ ] Update add integration tests
+-   [ ] Update addWithPermit integration tests
 
 -   None at the moment🙂
 

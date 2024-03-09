@@ -2,8 +2,9 @@
 pragma solidity ^0.8.21;
 
 import { DebtServiceHarness } from "test/harness/DebtServiceHarness.t.sol";
-import { DAI, USDC, AAVE_POOL } from "test/common/Constants.t.sol";
+import { DAI, USDC, AAVE_ORACLE, AAVE_POOL, WITHDRAW_BUFFER } from "test/common/Constants.t.sol";
 import { IPool } from "src/interfaces/aave/IPool.sol";
+import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
 contract DebtUtils {
@@ -70,5 +71,29 @@ contract DebtUtils {
             }
         }
         return filteredDebtServices;
+    }
+
+    /**
+     * @notice Calculates the maximum amount of collateral that can be withdrawn now.
+     * uint256 cNeededUSD = (dTotalUSD * 1e4) / liqThreshold;
+     * uint256 maxWithdrawUSD = cTotalUSD - cNeededUSD - _withdrawBuffer; (units: 8 decimals)
+     * maxWithdrawAmt = (maxWithdrawUSD * 10 ** (C_DECIMALS)) / cPriceUSD; (units: C_DECIMALS)
+     * Docs: https://docs.aave.com/developers/guides/liquidations#how-is-health-factor-calculated
+     */
+    function _getMaxWithdrawAmt(address _debtService, address _cToken, uint8 _cDecimals)
+        internal
+        view
+        returns (uint256 maxWithdrawAmt)
+    {
+        (uint256 cTotalUSD, uint256 dTotalUSD,, uint256 liqThreshold,,) =
+            IPool(AAVE_POOL).getUserAccountData(_debtService);
+        uint256 cPriceUSD = IAaveOracle(AAVE_ORACLE).getAssetPrice(_cToken);
+
+        if (dTotalUSD == 0) {
+            maxWithdrawAmt = type(uint256).max;
+        } else {
+            maxWithdrawAmt =
+                ((cTotalUSD - ((dTotalUSD * 1e4) / liqThreshold) - WITHDRAW_BUFFER) * 10 ** (_cDecimals)) / cPriceUSD;
+        }
     }
 }

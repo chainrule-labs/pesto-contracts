@@ -17,8 +17,7 @@ import {
     TEST_CLIENT,
     TEST_LTV,
     TEST_POOL_FEE,
-    USDC,
-    WITHDRAW_BUFFER
+    USDC
 } from "test/common/Constants.t.sol";
 import { TokenUtils } from "test/common/utils/TokenUtils.t.sol";
 import { DebtUtils } from "test/common/utils/DebtUtils.t.sol";
@@ -129,34 +128,6 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
     }
 
     /// @dev
-    // - It should revert with TokenConflict() error when cToken != bToken.
-    function test_CannotAddLeverageTokenConflict() public {
-        // Setup
-        uint256 ltv = 60;
-
-        // Take snapshot
-        uint256 id = vm.snapshot();
-
-        for (uint256 i; i < diffCTokenBTokenPositions.length; i++) {
-            // Test variables
-            address addr = diffCTokenBTokenPositions[i].addr;
-            address bToken = diffCTokenBTokenPositions[i].bToken;
-            uint256 bAmt = assets.maxCAmts(bToken);
-
-            // Fund contract with bToken
-            _fund(addr, bToken, bAmt);
-
-            // Act
-            vm.prank(owner);
-            vm.expectRevert(Position.TokenConflict.selector);
-            IPosition(addr).addLeverage(ltv, 0, TEST_POOL_FEE, TEST_CLIENT);
-
-            // Revert to snapshot
-            vm.revertTo(id);
-        }
-    }
-
-    /// @dev
     // - It should revert with Unauthorized() error when called by an unauthorized sender.
     function testFuzz_CannotAddLeverageUnauthorized(address _sender) public {
         // Setup
@@ -235,19 +206,24 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
         for (uint256 i; i < positions.length; i++) {
             // Test variables
             address addr = positions[i].addr;
+            address cToken = positions[i].cToken;
+            address dToken = positions[i].dToken;
 
             // Setup: open position
-            uint256 cAmt = assets.maxCAmts(positions[i].cToken);
-            _fund(owner, positions[i].cToken, cAmt);
+            uint256 cAmt = assets.maxCAmts(cToken);
+            _fund(owner, cToken, cAmt);
             vm.startPrank(owner);
-            IERC20(positions[i].cToken).approve(addr, cAmt);
+            IERC20(cToken).approve(addr, cAmt);
             IPosition(addr).add(cAmt, TEST_LTV, 0, TEST_POOL_FEE, TEST_CLIENT);
             vm.stopPrank();
+
+            // Pre-act data
+            uint256 dAmt = _getVariableDebtTokenBalance(addr, dToken);
 
             // Act
             vm.prank(_sender);
             vm.expectRevert(AdminService.Unauthorized.selector);
-            IPosition(addr).close(3000, false, 0, WITHDRAW_BUFFER);
+            IPosition(addr).close(3000, false, 0, cAmt, dAmt);
 
             // Revert to snapshot
             vm.revertTo(id);
