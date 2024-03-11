@@ -46,10 +46,10 @@ contract Assets {
         decimals[WBTC] = 8;
 
         // Set max collateral amounts
-        maxCAmts[USDC] = 10_000 * 10 ** 6;
-        maxCAmts[DAI] = 10_000 * 10 ** 18;
-        maxCAmts[WETH] = 25 * 10 ** 18;
-        maxCAmts[WBTC] = 1 * 10 ** 8;
+        maxCAmts[USDC] = 5_000 * 10 ** 6;
+        maxCAmts[DAI] = 5_000 * 10 ** 18;
+        maxCAmts[WETH] = 10 * 10 ** 18;
+        maxCAmts[WBTC] = 0.5 * 10 ** 8;
 
         // Set min collateral amounts
         minCAmts[USDC] = 100 * 10 ** 6;

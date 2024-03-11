@@ -71,7 +71,7 @@ contract DebtService is AdminService {
      * @param _dAmt The amount of the debt token to be borrowed (units: D_DECIMALS).
      */
     function _borrow(uint256 _dAmt) internal {
-        IPool(AAVE_POOL).borrow(D_TOKEN, dAmt, 2, 0, address(this));
+        IPool(AAVE_POOL).borrow(D_TOKEN, _dAmt, 2, 0, address(this));
     }
 
     /**

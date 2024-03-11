@@ -493,7 +493,7 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
     //     }
     // }
 
-    /// @dev Tests that close function works when the position has gas and collateral token and base token are the same.
+    /// @dev Tests that close function works when the position has gains and collateral token and base token are the same.
     /// @notice Test strategy:
     // - 1. Open a position. In doing so, extract the amount of base token added to Aave.
     // - 2. Mock Uniswap to ensure position gains.
