@@ -24,10 +24,11 @@ Tests:
 
 -   [x] Test position close integration test with gains
 -   [x] Test position close integration test with gains
+-   [x] Update addLeverage integration tests
+-   [x] Update add integration tests
+-   [x] Update addWithPermit integration tests
 -   [ ] Test newly added \_borrow function
--   [ ] Update addLeverage integration tests
--   [ ] Update add integration tests
--   [ ] Update addWithPermit integration tests
+-   [ ] Update fee collector tests
 
 -   None at the moment🙂
 

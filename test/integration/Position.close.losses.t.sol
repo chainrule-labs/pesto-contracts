@@ -236,7 +236,7 @@ contract PositionCloseLossesTest is Test, TokenUtils, DebtUtils {
     // - 3. Using screenshot, obtain max withdrawable collateral amount after withdrawing all B_TOKEN and partially repaying debt.
     // - 4. Close the position.
 
-    /// @notice assertions:
+    /// @notice Assertions:
     // - Position contract's (bToken) AToken balance should decrease by the amount withdrawn.
     // - Position contract's (cToken) AToken balance should decrease by the amount withdrawn.
     // - Position contract's dToken balance should be 0; no gains, so all was used for swap.

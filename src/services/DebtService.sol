@@ -10,6 +10,8 @@ import { IERC20Permit } from "src/interfaces/token/IERC20Permit.sol";
 import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IERC20Metadata } from "src/interfaces/token/IERC20Metadata.sol";
 
+import "forge-std/console.sol";
+
 /// @title DebtService
 /// @author Chain Rule, LLC
 /// @notice Manages all debt-related interactions

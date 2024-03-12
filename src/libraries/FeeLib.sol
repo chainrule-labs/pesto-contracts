@@ -14,15 +14,15 @@ library FeeLib {
 
     /**
      * @notice Takes protocol fee from the amount of collateral supplied.
-     * @param _cAmt The amount of collateral to be supplied (units: C_DECIMALS).
+     * @param _amt The base amount that's subjected to the protocol fee.
      * @param _client The address where a client operator will receive protocols fees.
      * @return cAmtNet The resulting amount of collateral to be supplied after fees are taken.
      */
-    function takeProtocolFee(address _token, uint256 _cAmt, address _client) internal returns (uint256 cAmtNet) {
-        uint256 maxFee = (_cAmt * PROTOCOL_FEE_RATE) / 1000;
+    function takeProtocolFee(address _token, uint256 _amt, address _client) internal returns (uint256 cAmtNet) {
+        uint256 maxFee = (_amt * PROTOCOL_FEE_RATE) / 1000;
         (uint256 userSavings, uint256 clientFee) = IFeeCollector(FEE_COLLECTOR).getClientAllocations(_client, maxFee);
         uint256 totalFee = maxFee - userSavings;
-        cAmtNet = _cAmt - totalFee;
+        cAmtNet = _amt - totalFee;
         SafeTransferLib.safeApprove(ERC20(_token), FEE_COLLECTOR, totalFee);
         IFeeCollector(FEE_COLLECTOR).collectFees(_client, _token, totalFee, clientFee);
     }

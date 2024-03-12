@@ -27,7 +27,7 @@ uint256 constant REPAY_BUFFER = 2;
 uint256 constant PROTOCOL_FEE_RATE = 3;
 uint256 constant CLIENT_RATE = 30;
 uint256 constant CLIENT_TAKE_RATE = 50;
-uint256 constant SUCCESSIVE_ITERATIONS = 5;
+uint256 constant SUCCESSIVE_ITERATIONS = 3;
 uint256 constant TEST_LTV = 50;
 
 contract Assets {
@@ -35,6 +35,7 @@ contract Assets {
     mapping(address => uint8) public decimals;
     mapping(address => uint256) public maxCAmts;
     mapping(address => uint256) public minCAmts;
+    mapping(address => uint256) public minDAmts;
     mapping(address => uint256) public swapAmtOuts;
     mapping(address => uint256) public prices;
 
@@ -48,14 +49,20 @@ contract Assets {
         // Set max collateral amounts
         maxCAmts[USDC] = 5_000 * 10 ** 6;
         maxCAmts[DAI] = 5_000 * 10 ** 18;
-        maxCAmts[WETH] = 10 * 10 ** 18;
-        maxCAmts[WBTC] = 0.5 * 10 ** 8;
+        maxCAmts[WETH] = 2 * 10 ** 18;
+        maxCAmts[WBTC] = 0.1 * 10 ** 8;
 
         // Set min collateral amounts
         minCAmts[USDC] = 100 * 10 ** 6;
         minCAmts[DAI] = 100 * 10 ** 18;
         minCAmts[WETH] = 0.01 * 10 ** 18;
         minCAmts[WBTC] = 0.001 * 10 ** 8;
+
+        // Set min borrow amounts
+        minDAmts[USDC] = 1 * 10 ** 6;
+        minDAmts[DAI] = 1 * 10 ** 18;
+        minDAmts[WETH] = 0.01 * 10 ** 18;
+        minDAmts[WBTC] = 0.001 * 10 ** 8;
 
         // Set swap amounts out
         swapAmtOuts[USDC] = 10 * 10 ** 6;

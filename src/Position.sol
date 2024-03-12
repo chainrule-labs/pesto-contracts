@@ -10,6 +10,8 @@ import { IERC20 } from "src/interfaces/token/IERC20.sol";
 import { IERC20Permit } from "src/interfaces/token/IERC20Permit.sol";
 import { IERC20Metadata } from "src/interfaces/token/IERC20Metadata.sol";
 
+import "forge-std/console.sol";
+
 /// @title Position
 /// @author Chain Rule, LLC
 /// @notice Manages the owner's individual position
@@ -20,7 +22,7 @@ contract Position is DebtService, SwapService {
 
     // Events
     event Add(uint256 cAmt, uint256 dAmt, uint256 bAmt);
-    event AddLeverage(uint256 cAmt, uint256 dAmt, uint256 bAmt);
+    event AddLeverage(uint256 dAmt, uint256 bAmt);
     event Close(uint256 gains);
 
     constructor(address _owner, address _cToken, address _dToken, address _bToken)
@@ -105,16 +107,21 @@ contract Position is DebtService, SwapService {
         payable
         onlyOwner
     {
-        // 1. Take protocol fee
-        uint256 bAmtNet = FeeLib.takeProtocolFee(B_TOKEN, IERC20(B_TOKEN).balanceOf(address(this)), _client);
-
-        // 2. Borrow debt token
+        // 1. Borrow debt token
         _borrow(_dAmt);
 
-        // 3. Swap debt token for base token
-        (, uint256 bAmt) = _swapExactInput(D_TOKEN, B_TOKEN, _dAmt, _swapAmtOutMin, _poolFee);
+        uint256 dTokenBal = IERC20(D_TOKEN).balanceOf(address(this));
 
-        emit AddLeverage(bAmtNet, _dAmt, bAmt);
+        // 2. Take protocol fee
+        uint256 dAmtNet = FeeLib.takeProtocolFee(D_TOKEN, IERC20(D_TOKEN).balanceOf(address(this)), _client);
+
+        // 3. Swap debt token for base token
+        (, uint256 bAmt) = _swapExactInput(D_TOKEN, B_TOKEN, dAmtNet, _swapAmtOutMin, _poolFee);
+
+        // 4. Supply base token as collateral
+        _supplyBase(B_TOKEN, bAmt);
+
+        emit AddLeverage(dAmtNet, bAmt);
     }
 
     /**

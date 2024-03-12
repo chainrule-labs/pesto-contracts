@@ -7,6 +7,8 @@ import { IPool } from "src/interfaces/aave/IPool.sol";
 import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
+import "forge-std/console.sol";
+
 contract DebtUtils {
     function _getDAmt(
         uint256 _cPrice,
@@ -95,5 +97,20 @@ contract DebtUtils {
             maxWithdrawAmt =
                 ((cTotalUSD - ((dTotalUSD * 1e4) / liqThreshold) - WITHDRAW_BUFFER) * 10 ** (_cDecimals)) / cPriceUSD;
         }
+    }
+
+    function _getMaxBorrow(address _debtService, address _dToken, uint8 _dDecimals)
+        internal
+        view
+        returns (uint256 maxBorrow)
+    {
+        (uint256 cTotalUSD, uint256 dTotalUSD,,, uint256 ltv,) = IPool(AAVE_POOL).getUserAccountData(_debtService);
+        uint256 dPriceUSD = IAaveOracle(AAVE_ORACLE).getAssetPrice(_dToken);
+
+        uint256 dMaxUSD = (cTotalUSD * ltv) / 1e4;
+        // uint256 borrowBuffer = 10e8;
+        uint256 maxBorrowUSD = dMaxUSD - dTotalUSD;
+
+        maxBorrow = (maxBorrowUSD * 10 ** (_dDecimals)) / dPriceUSD;
     }
 }
