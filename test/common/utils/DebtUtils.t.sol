@@ -7,8 +7,6 @@ import { IPool } from "src/interfaces/aave/IPool.sol";
 import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
-import "forge-std/console.sol";
-
 contract DebtUtils {
     function _getDAmt(
         uint256 _cPrice,

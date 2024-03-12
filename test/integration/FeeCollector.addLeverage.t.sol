@@ -106,7 +106,6 @@ contract FeeCollectorAddLeverageTest is Test, TokenUtils, DebtUtils, FeeUtils {
 
     /// @dev
     // - The FeeCollector's feeToken balance should increase by (maxFee - userSavings).
-    // - The feeToken amount supplied as collateral should be _bAmt - (maxFee - userSavings).
     // - The feeToken totalClientBalances should increase by clientFee.
     // - The client's feeToken balance on the FeeCollector contract should increase by clientFee.
     function testFuzz_AddLeverageWithClient(uint256 _ltv, uint256 _bAmt, uint256 _clientTakeRate, address _client)
@@ -146,8 +145,6 @@ contract FeeCollectorAddLeverageTest is Test, TokenUtils, DebtUtils, FeeUtils {
             feeCollectorBalances.preFeeTokenBal = IERC20(feeToken).balanceOf(FEE_COLLECTOR);
             feeCollectorBalances.preClientFeeTokenBal = IFeeCollector(FEE_COLLECTOR).balances(_client, feeToken);
             feeCollectorBalances.preTotalClientsFeeTokenBal = IFeeCollector(FEE_COLLECTOR).totalClientBalances(feeToken);
-            positionBalances.preATokenBal = _getATokenBalance(addr, feeToken);
-            assertEq(positionBalances.preATokenBal, 0);
 
             // Act
             IPosition(addr).addLeverage(_ltv, 0, TEST_POOL_FEE, _client);
@@ -157,7 +154,6 @@ contract FeeCollectorAddLeverageTest is Test, TokenUtils, DebtUtils, FeeUtils {
             feeCollectorBalances.postClientFeeTokenBal = IFeeCollector(FEE_COLLECTOR).balances(_client, feeToken);
             feeCollectorBalances.postTotalClientsFeeTokenBal =
                 IFeeCollector(FEE_COLLECTOR).totalClientBalances(feeToken);
-            positionBalances.postATokenBal = _getATokenBalance(addr, feeToken);
 
             // Assertions
             assertEq(feeCollectorBalances.postFeeTokenBal, feeCollectorBalances.preFeeTokenBal + protocolFee);
@@ -166,7 +162,6 @@ contract FeeCollectorAddLeverageTest is Test, TokenUtils, DebtUtils, FeeUtils {
                 feeCollectorBalances.postTotalClientsFeeTokenBal,
                 feeCollectorBalances.preTotalClientsFeeTokenBal + clientFee
             );
-            assertApproxEqAbs(positionBalances.postATokenBal, _bAmt - protocolFee, 1);
 
             // Revert to snapshot
             vm.revertTo(id);
@@ -208,8 +203,6 @@ contract FeeCollectorAddLeverageTest is Test, TokenUtils, DebtUtils, FeeUtils {
             // Pre-act balances
             feeCollectorBalances.preFeeTokenBal = IERC20(feeToken).balanceOf(FEE_COLLECTOR);
             feeCollectorBalances.preTotalClientsFeeTokenBal = IFeeCollector(FEE_COLLECTOR).totalClientBalances(feeToken);
-            positionBalances.preATokenBal = _getATokenBalance(addr, feeToken);
-            assertEq(positionBalances.preATokenBal, 0);
 
             // Act
             IPosition(addr).addLeverage(_ltv, 0, TEST_POOL_FEE, address(0));
@@ -218,12 +211,10 @@ contract FeeCollectorAddLeverageTest is Test, TokenUtils, DebtUtils, FeeUtils {
             feeCollectorBalances.postFeeTokenBal = IERC20(feeToken).balanceOf(FEE_COLLECTOR);
             feeCollectorBalances.postTotalClientsFeeTokenBal =
                 IFeeCollector(FEE_COLLECTOR).totalClientBalances(feeToken);
-            uint256 postPositionATokenBal = _getATokenBalance(addr, feeToken);
 
             // Assertions
             assertEq(feeCollectorBalances.postFeeTokenBal, feeCollectorBalances.preFeeTokenBal + protocolFee);
             assertEq(feeCollectorBalances.postTotalClientsFeeTokenBal, feeCollectorBalances.preTotalClientsFeeTokenBal);
-            assertApproxEqAbs(postPositionATokenBal, _bAmt - protocolFee, 1);
 
             // Revert to snapshot
             vm.revertTo(id);

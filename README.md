@@ -27,8 +27,8 @@ Tests:
 -   [x] Update addLeverage integration tests
 -   [x] Update add integration tests
 -   [x] Update addWithPermit integration tests
--   [ ] Test newly added \_borrow function
--   [ ] Update fee collector tests
+-   [ ] Test newly added, internal \_borrow function in debt service
+-   [ ] Update add leverage fee collector integration tests (fee is now taken from D_TOKEN in this function)
 
 -   None at the moment🙂
 

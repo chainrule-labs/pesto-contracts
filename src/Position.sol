@@ -10,8 +10,6 @@ import { IERC20 } from "src/interfaces/token/IERC20.sol";
 import { IERC20Permit } from "src/interfaces/token/IERC20Permit.sol";
 import { IERC20Metadata } from "src/interfaces/token/IERC20Metadata.sol";
 
-import "forge-std/console.sol";
-
 /// @title Position
 /// @author Chain Rule, LLC
 /// @notice Manages the owner's individual position
@@ -109,8 +107,6 @@ contract Position is DebtService, SwapService {
     {
         // 1. Borrow debt token
         _borrow(_dAmt);
-
-        uint256 dTokenBal = IERC20(D_TOKEN).balanceOf(address(this));
 
         // 2. Take protocol fee
         uint256 dAmtNet = FeeLib.takeProtocolFee(D_TOKEN, IERC20(D_TOKEN).balanceOf(address(this)), _client);
