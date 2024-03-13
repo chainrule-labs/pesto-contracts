@@ -142,14 +142,14 @@ contract PositionAddSuccessiveTest is Test, TokenUtils, DebtUtils, FeeUtils {
     /// @dev Tests that add function works successively over varying time deltas
     //       when the collateral token and base token are different.
     /// @notice Test strategy:
-    // - 1. Add to a position 5 times over time deltas.
+    // - 1. Add to a position multiple times over time deltas.
     // - 2. Accound for interest on debt, collateral, and base tokens over each delta.
     // - 3. The emprically-derived max time delta is 4 weeks. Longer time detlas cause
     //      more interest on debt. More debt affects ability to borrow.
 
     /// @notice Assertions:
     // - The Position contract's (B_TOKEN) aToken balance on Aave should increase
-    //   by the sum of bAmt's receieved from swaps across all add actions.
+    //   by the sum of bAmt's received from swaps across all add actions.
     // - The Position contract's (C_TOKEN) aToken balance should increase by
     //   the sum of emitted cAmt's across all add actions.
     // - The Position contract's variableDebtToken balance should increase by
@@ -260,7 +260,7 @@ contract PositionAddSuccessiveTest is Test, TokenUtils, DebtUtils, FeeUtils {
     /// @dev Tests that add function works successively over varying time deltas
     //       when the collateral token and base token are the same.
     /// @notice Test strategy:
-    // - 1. Add to a position 5 times over time deltas.
+    // - 1. Add to a position multiple times over time deltas.
     // - 2. Accound for interest on debt, collateral, and base tokens over each delta.
     // - 3. The emprically-derived max time delta is 4 weeks. Longer time detlas cause
     //      more interest on debt. More debt affects ability to borrow.
@@ -268,7 +268,7 @@ contract PositionAddSuccessiveTest is Test, TokenUtils, DebtUtils, FeeUtils {
     /// @notice Assertions:
     // - The Position contract's (C_TOKEN) aToken balance on Aave should increase by sum(bAmts) + sum(emitted cAmts),
     //   where bAmt is the amount received from swap and cAmt is the amount emitted from add.
-    //   by the sum of bAmt's receieved from swaps across all add actions
+    //   by the sum of bAmt's received from swaps across all add actions
     // - The Position contract's (B_TOKEN) aToken balance should equal its (C_TOKEN) aToken balance.
     // - The Position contract's variableDebtToken balance should increase by
     //   the sum of dAmt's received from borrowing across all add actions.

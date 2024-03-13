@@ -26,9 +26,6 @@ contract DebtService is AdminService {
     address public immutable C_TOKEN;
     address public immutable D_TOKEN;
 
-    // Errors
-    error TokenUnsupported();
-
     constructor(address _owner, address _cToken, address _dToken) AdminService(_owner) {
         C_TOKEN = _cToken;
         D_TOKEN = _dToken;
@@ -94,6 +91,19 @@ contract DebtService is AdminService {
     }
 
     /**
+     * @notice Supplies the contract's base token balance as collateral.
+     * @param _bToken The address of the base token to be supplied as collateral.
+     * @param _bAmt The amount of collateral to be supplied (units: D_DECIMALS).
+     */
+    function _supplyBase(address _bToken, uint256 _bAmt) internal {
+        // 1. Approve Aave to spend _cAmt of this contract's C_TOKEN
+        SafeTransferLib.safeApprove(ERC20(_bToken), AAVE_POOL, _bAmt);
+
+        // 2. Supply collateral to Aave
+        IPool(AAVE_POOL).supply(_bToken, _bAmt, address(this), 0);
+    }
+
+    /**
      * @notice Increases the collateral amount backing this contract's loan.
      * @param _cAmt The amount of collateral to be supplied (units: C_DECIMALS).
      */
@@ -127,19 +137,6 @@ contract DebtService is AdminService {
 
         // 2. Add Collateral
         addCollateral(_cAmt);
-    }
-
-    /**
-     * @notice Supplies the contract's base token balance as collateral.
-     * @param _bToken The address of the base token to be supplied as collateral.
-     * @param _bAmt The amount of collateral to be supplied (units: D_DECIMALS).
-     */
-    function _supplyBase(address _bToken, uint256 _bAmt) internal onlyOwner {
-        // 1. Approve Aave to spend _cAmt of this contract's C_TOKEN
-        SafeTransferLib.safeApprove(ERC20(_bToken), AAVE_POOL, _bAmt);
-
-        // 2. Supply collateral to Aave
-        IPool(AAVE_POOL).supply(_bToken, _bAmt, address(this), 0);
     }
 
     /**

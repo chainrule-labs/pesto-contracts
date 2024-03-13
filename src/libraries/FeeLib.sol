@@ -14,7 +14,7 @@ library FeeLib {
 
     /**
      * @notice Takes protocol fee from the amount of collateral supplied.
-     * @param _amt The base amount that's subjected to the protocol fee.
+     * @param _amt The amount that's subjected to the protocol fee.
      * @param _client The address where a client operator will receive protocols fees.
      * @return cAmtNet The resulting amount of collateral to be supplied after fees are taken.
      */

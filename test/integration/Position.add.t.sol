@@ -141,7 +141,7 @@ contract PositionAddTest is Test, TokenUtils, DebtUtils, FeeUtils {
 
     /// @dev Tests that add function works when the collateral token and base token are different.
     /// @notice Assertions:
-    // - The Position contract's (B_TOKEN) aToken balance on Aave should increase by bAmt receieved from swap.
+    // - The Position contract's (B_TOKEN) aToken balance on Aave should increase by bAmt received from swap.
     // - The Position contract's (C_TOKEN) aToken balance should increase by (collateral - protocolFee).
     // - The Position contract's B_TOKEN balance should remain 0.
     // - The Position contract's variableDebtToken balance should increase by dAmt received from swap.

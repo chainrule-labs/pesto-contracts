@@ -131,7 +131,7 @@ contract PositionAddLeverageSuccessiveTest is Test, TokenUtils, DebtUtils {
     }
 
     /// @dev Tests that addLeverage function works successively when the collateral token and base token are different.
-    // - The Position contract's (B_TOKEN) aToken balance after adding leverage should equal bAmt receieved from swap across all addLeverage actions.
+    // - The Position contract's (B_TOKEN) aToken balance after adding leverage should equal bAmt received from swap across all addLeverage actions.
     // - The Position contract's (C_TOKEN) aToken balance should remain unchanged.
     // - The Position contract's variable debt token balance should increase by dAmt received from borrow across all add actions
     // - The above should be true for a large range of LTVs and cAmts.
@@ -248,7 +248,7 @@ contract PositionAddLeverageSuccessiveTest is Test, TokenUtils, DebtUtils {
     }
 
     /// @dev Tests that addLeverage function works when the collateral token and base token are the same.
-    // - The Position contract's (C_TOKEN) aToken should increase by equal bAmt receieved from swap across all addLeverage actions.
+    // - The Position contract's (C_TOKEN) aToken should increase by equal bAmt received from swap across all addLeverage actions.
     // - The Position contract's (B_TOKEN) aToken balance should equal its (C_TOKEN) aToken balance.
     // - The Position contract's variable debt token balance should increase by dAmt received from borrow across all add actions
     // - The above should be true for a large range of LTVs and cAmts.

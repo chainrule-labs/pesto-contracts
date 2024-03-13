@@ -18,7 +18,11 @@ The following outlines principles for core protocol funcitonality.
 
 Logic:
 
--   [ ] Add function that lets users supply bToken to Aave to earn interest
+-   [x] Add function that lets users supply bToken to Aave to earn interest
+-   [ ] Consider changing `close()` to `reduce()`, since now users can send in the withdraw amount, which may or may not be the full amount necessary to close the position.
+-   [ ] Why repay and withdraw in 2 TXs instead of 1?
+    -   Maybe let the user send a boolean flag specifying whether to withdraw collateral.
+    -   If withdraw = true, the user is likely repaying all debt to close out position
 
 Tests:
 
@@ -27,11 +31,21 @@ Tests:
 -   [x] Update addLeverage integration tests
 -   [x] Update add integration tests
 -   [x] Update addWithPermit integration tests
--   [ ] Test newly added, internal \_borrow function in debt service
--   [ ] Update add leverage fee collector integration tests (fee is now taken from D_TOKEN in this function)
+-   [x] Test newly added, internal \_borrow function in debt service
+-   [x] Update add leverage fee collector integration tests (fee is now taken from D_TOKEN in this function)
+-   [ ] For testing `close()` in the case the position is not entirely closed
 
 -   None at the moment🙂
 
 Considerations:
 
 -   None at the moment🙂
+
+# REMOVE
+
+NOTES:
+
+-   Fee is taken in C_TOKEN in `add()`
+-   Fee is taken in D_TOKEN in `addLeverage()`
+
+Update docs accordingly.
