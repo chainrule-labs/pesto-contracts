@@ -106,7 +106,6 @@ contract DebtUtils {
         uint256 dPriceUSD = IAaveOracle(AAVE_ORACLE).getAssetPrice(_dToken);
 
         uint256 dMaxUSD = (cTotalUSD * ltv) / 1e4;
-        // uint256 borrowBuffer = 10e8;
         uint256 maxBorrowUSD = dMaxUSD - dTotalUSD;
 
         maxBorrow = (maxBorrowUSD * 10 ** (_dDecimals)) / dPriceUSD;

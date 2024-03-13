@@ -45,6 +45,15 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
                 }
             }
         }
+
+        // Mock AaveOracle
+        for (uint256 i; i < supportedAssets.length; i++) {
+            vm.mockCall(
+                AAVE_ORACLE,
+                abi.encodeWithSelector(IAaveOracle(AAVE_ORACLE).getAssetPrice.selector, supportedAssets[i]),
+                abi.encode(assets.prices(supportedAssets[i]))
+            );
+        }
     }
 
     /// @dev
@@ -80,15 +89,6 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
     // - The contract's dToken balance should increase by the amount of debt borrowed.
     // - The contract should borrow the correct amount, given mocked token prices.
     function testFuzz_TakeLoan(uint256 _ltv) public {
-        // Mock AaveOracle
-        for (uint256 i; i < supportedAssets.length; i++) {
-            vm.mockCall(
-                AAVE_ORACLE,
-                abi.encodeWithSelector(IAaveOracle(AAVE_ORACLE).getAssetPrice.selector, supportedAssets[i]),
-                abi.encode(assets.prices(supportedAssets[i]))
-            );
-        }
-
         for (uint256 i; i < debtServices.length; i++) {
             // Setup
             address debtService = address(debtServices[i]);
@@ -117,6 +117,42 @@ contract DebtServiceTest is Test, DebtUtils, TokenUtils {
             assertEq(IERC20(cToken).balanceOf(debtService), 0);
             assertEq(IERC20(dToken).balanceOf(debtService), dAmt);
             assertEq(dAmt, dAmtExpected);
+        }
+    }
+
+    /// @dev
+    // - The contract's dToken balance should increase by the amount of debt borrowed.
+    function testFuzz_Borrow(uint256 _dAmt) public {
+        for (uint256 i; i < debtServices.length; i++) {
+            // Setup
+            address debtService = address(debtServices[i]);
+            address cToken = debtServices[i].C_TOKEN();
+            address dToken = debtServices[i].D_TOKEN();
+            uint256 cAmt = assets.maxCAmts(cToken);
+
+            // Supply collateral
+            vm.startPrank(debtService);
+            IERC20(cToken).approve(AAVE_POOL, cAmt);
+            IPool(AAVE_POOL).supply(cToken, cAmt, debtService, 0);
+            vm.stopPrank();
+
+            // Get max borrow amount
+            uint256 maxBorrow = _getMaxBorrow(debtService, dToken, assets.decimals(dToken));
+
+            // Assumptions
+            _dAmt = bound(_dAmt, assets.minDAmts(dToken), maxBorrow);
+
+            // Pre-act data
+            uint256 preDTokenBal = IERC20(dToken).balanceOf(debtService);
+
+            // Act
+            debtServices[i].exposed_borrow(_dAmt);
+
+            // Post-act data
+            uint256 postDTokenBal = IERC20(dToken).balanceOf(debtService);
+
+            // Post-Act Assertions
+            assertApproxEqAbs(postDTokenBal, preDTokenBal + _dAmt, 1);
         }
     }
 
