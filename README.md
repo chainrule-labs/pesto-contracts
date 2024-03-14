@@ -11,7 +11,7 @@ On-chain shorting via Aave and Uniswap.
 The following outlines principles for **core** protocol funcitonality.
 
 1. Immutable.
-2. No Governance.
+2. No Governance on the core protocol.
 3. No Admin Keys.
 
 ## To-Do

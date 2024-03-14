@@ -122,12 +122,12 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
     //        where D_TOKEN amount is less than total debt.
     // - Position contract's (bToken) AToken balance should decrease by _withdrawBAmt.
     // - Position contract's (cToken) AToken balance should decrease by _withdrawCAmt.
-    // - Position contract's dToken balance should be 0.
     ///  @notice if B_TOKEN withdraw value <= debt value, dAmtOut == debt repayment, so dToken balance == 0.
+    // - Position contract's dToken balance should be 0.
     // - Position contract's bToken balance should remain 0.
     // - Position contract's debt on Aave should decrease by amount repaid.
     // - Owner's cToken balance should increase by _withdrawCAmt.
-    // - Owner's bToken balance should stay the same.
+    // - Owner's bToken balance should stay the same (no gains).
     // - Gains should be 0 because if there are any, they are unrealized.
     // - The above should be true for all supported tokens.
     function testFuzz_ClosePartialExactInputDiffCAndB(uint256 _withdrawBAmt, uint256 _withdrawCAmt) public {
@@ -245,8 +245,8 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
     //        where D_TOKEN amount is less than total debt.
     // - Position contract's (cToken) AToken balance should decrease by (_withdrawCAmt + _withdrawBAmt).
     // - Position contract's (bToken) AToken balance should should equal its (cToken) AToken balance.
-    // - Position contract's dToken balance should be 0.
     ///  @notice if B_TOKEN withdraw value <= debt value, dAmtOut == debt repayment, so dToken balance == 0.
+    // - Position contract's dToken balance should be 0.
     // - Position contract's bToken balance should remain 0.
     // - Position contract's debt on Aave should decrease by amount repaid.
     // - Owner's cToken balance should increase by _withdrawCAmt.

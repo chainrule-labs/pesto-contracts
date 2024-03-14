@@ -115,6 +115,7 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
     // - Position contract's (cToken) AToken balance should go to 0 (full withdraw).
     // - Position contract's bToken balance should remain 0.
     // - Position contract's debt on Aave should go to 0.
+    // - Position gains should be equal to the supplied base token amount times profit percent (uniswap mock takes 1 - PROFIT_PERCENT of input tokens).
     // - Owner's cToken balance should increase by the amount of collateral withdrawn.
     // - Owner's bToken balance should increase by the position's gains amount.
     // - The above should be true for all supported tokens.
@@ -186,6 +187,8 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
                 assertEq(contractBalances.postVDToken, 0);
                 assertEq(contractBalances.postCAToken, 0);
                 assertEq(contractBalances.postBAToken, 0);
+                /// @dev Uniswap mock takes (1 - PROFIT_PERCENT)% of the input token balance
+                //       at the time it's called, leaving PROFIT_PERCENT on the contract.
                 assertApproxEqAbs(gains, contractBalances.preBAToken * PROFIT_PERCENT / 100, 1);
                 assertEq(ownerBalances.postBToken, ownerBalances.preBToken + gains);
                 assertEq(ownerBalances.postCToken, ownerBalances.preCToken + contractBalances.preCAToken);
@@ -197,12 +200,13 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
     }
 
     /// @dev
-    // - Position contract's (bToken) AToken balance should go to 0 (full withdraw).
     // - Position contract's (cToken) AToken balance should go to 0 (full withdraw).
+    // - Position contract's (bToken) AToken balance should equal its (cToken) AToken balance.
     // - Position contract's bToken balance should remain 0.
     // - Position contract's debt on Aave should go to 0.
-    // - Owner's cToken balance should increase by the amount of collateral withdrawn.
-    // - Owner's bToken balance should increase by the position's gains amount.
+    // - Position gains should be equal to the supplied base token amount times profit percent (uniswap mock takes 1 - PROFIT_PERCENT of input tokens).
+    // - Owner's cToken balance should increase by (collateral withdrawn + position's gains).
+    // - Owner's bToken balance should equal its cToken balance.
     // - The above should be true for all supported tokens.
     function test_CloseExactOutputSameCAndB() public {
         // Setup
@@ -280,8 +284,11 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
                 assertEq(contractBalances.postVDToken, 0);
                 assertEq(contractBalances.postCAToken, 0);
                 assertEq(contractBalances.postBAToken, contractBalances.postCAToken);
+                /// @dev Uniswap mock takes (1 - PROFIT_PERCENT)% of the input token balance
+                //       at the time it's called, leaving PROFIT_PERCENT on the contract.
                 assertApproxEqAbs(gains, suppliedBAmt * PROFIT_PERCENT / 100, 1);
-                /// @dev In this case, bToken and cToken balances will increase by the same amount (gains + collateral withdrawn - suppliedBAmt)
+                /// @dev In this case, bToken and cToken balances will increase by the
+                //       same amount (gains + collateral withdrawn - suppliedBAmt).
                 assertApproxEqAbs(
                     ownerBalances.postBToken,
                     ownerBalances.preBToken + gains + (contractBalances.preCAToken - suppliedBAmt),
@@ -299,8 +306,8 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
     //        where D_TOKEN amount is greater than total debt.
     // - Position contract's (bToken) AToken balance should go to 0 (full withdraw).
     // - Position contract's (cToken) AToken balance should go to 0 (full withdraw).
-    // - Position contract's dToken balance should be (swap dAmtOut - debt repayment).
     ///  @notice If B_TOKEN withdraw value > debt value, there will be left over D_TOKEN on the position contract.
+    // - Position contract's dToken balance should be (swap dAmtOut - debt repayment).
     // - Position contract's bToken balance should remain 0.
     // - Position contract's debt on Aave should go to 0.
     // - Owner's cToken balance should increase by the amount of collateral withdrawn.
