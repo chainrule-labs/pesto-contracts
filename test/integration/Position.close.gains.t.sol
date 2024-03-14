@@ -14,17 +14,15 @@ import {
     DAI,
     FEE_COLLECTOR,
     PROFIT_PERCENT,
-    REPAY_PERCENT,
     SWAP_ROUTER,
     TEST_CLIENT,
     TEST_LTV,
     TEST_POOL_FEE,
-    USDC,
-    WITHDRAW_BUFFER
+    USDC
 } from "test/common/Constants.t.sol";
 import { TokenUtils } from "test/common/utils/TokenUtils.t.sol";
 import { DebtUtils } from "test/common/utils/DebtUtils.t.sol";
-import { MockUniswapGains, MockUniswapLosses } from "test/mocks/MockUniswap.t.sol";
+import { MockUniswapGains } from "test/mocks/MockUniswap.t.sol";
 import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IPosition } from "src/interfaces/IPosition.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
@@ -165,7 +163,7 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
                 /// @dev start event recorder
                 vm.recordLogs();
                 /// @dev since profitable, withdrawCAmt is max int and withdrawBAmt is its (base) AToken balance
-                IPosition(p.addr).close(3000, true, 0, type(uint256).max, contractBalances.preBAToken);
+                IPosition(p.addr).close(TEST_POOL_FEE, true, 0, type(uint256).max, contractBalances.preBAToken);
                 VmSafe.Log[] memory entries = vm.getRecordedLogs();
 
                 // Get post-act balances
@@ -259,7 +257,7 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
 
                 // Act
                 /// @dev since profitable, withdrawCAmt is max int and withdrawBAmt is its (base) AToken balance
-                IPosition(p.addr).close(3000, true, 0, type(uint256).max, suppliedBAmt);
+                IPosition(p.addr).close(TEST_POOL_FEE, true, 0, type(uint256).max, suppliedBAmt);
                 entries = vm.getRecordedLogs();
 
                 // Get post-act balances
@@ -353,14 +351,14 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
 
                 // Mock Uniswap to ensure position gains
                 uint256 amountOut = contractBalances.preVDToken + _dAmtRemainder;
-                _fund(SWAP_ROUTER, p.dToken, contractBalances.preVDToken + _dAmtRemainder);
+                _fund(SWAP_ROUTER, p.dToken, amountOut);
                 bytes memory code = address(new MockUniswapGains()).code;
                 vm.etch(SWAP_ROUTER, code);
 
                 // Act
                 /// @dev start event recorder
                 vm.recordLogs();
-                IPosition(p.addr).close(3000, false, 0, type(uint256).max, contractBalances.preBAToken);
+                IPosition(p.addr).close(TEST_POOL_FEE, false, 0, type(uint256).max, contractBalances.preBAToken);
                 VmSafe.Log[] memory entries = vm.getRecordedLogs();
 
                 // Get post-act balances
@@ -394,104 +392,6 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
             }
         }
     }
-
-    // /// @dev: Simulates close where not all B_TOKEN is withdrawn and swapped for D_TOKEN,
-    // //        where D_TOKEN amount is less than total debt.
-    // // - Position contract's (bToken) AToken balance should go to 0 (full withdraw).
-    // // - Position contract's (cToken) AToken balance should go to 0 (full withdraw).
-    // // - Position contract's dToken balance should be 0.
-    // ///  @notice if B_TOKEN withdraw value <= debt value, dAmtOut == debt repayment, so dToken balance == 0.
-    // // - Position contract's bToken balance should remain 0.
-    // // - Position contract's debt on Aave should go to 0.
-    // // - Owner's cToken balance should increase by the amount of collateral withdrawn.
-    // // - Owner's bToken balance should stay the same, as gains will be in debt token if exactInput is called.
-    // // - The above should be true for all supported tokens.
-    // function testFuzz_ClosePartialExactInputDiffCAndB(uint256 _dAmtRemainder) public {
-    //     // Setup
-    //     ContractBalances memory contractBalances;
-    //     OwnerBalances memory ownerBalances;
-    //     TestPosition memory p;
-
-    //     // Take snapshot
-    //     uint256 id = vm.snapshot();
-    //     for (uint256 i; i < positions.length; i++) {
-    //         // Test variables
-    //         p.addr = positions[i].addr;
-    //         p.cToken = positions[i].cToken;
-    //         p.dToken = positions[i].dToken;
-    //         p.bToken = positions[i].bToken;
-
-    //         if (p.cToken != p.bToken) {
-    //             // Setup: open position
-    //             uint256 cAmt = assets.maxCAmts(p.cToken);
-    //             _fund(owner, p.cToken, cAmt);
-    //             IERC20(p.cToken).approve(p.addr, cAmt);
-    //             IPosition(p.addr).add(cAmt, TEST_LTV, 0, TEST_POOL_FEE, TEST_CLIENT);
-
-    //             // Get pre-act balances
-    //             contractBalances.preBToken = IERC20(p.bToken).balanceOf(p.addr);
-    //             contractBalances.preDToken = IERC20(p.dToken).balanceOf(p.addr);
-    //             contractBalances.preVDToken = _getVariableDebtTokenBalance(p.addr, p.dToken);
-    //             contractBalances.preCAToken = _getATokenBalance(p.addr, p.cToken);
-    //             contractBalances.preBAToken = _getATokenBalance(p.addr, p.bToken);
-    //             ownerBalances.preBToken = IERC20(p.bToken).balanceOf(owner);
-    //             ownerBalances.preCToken = IERC20(p.cToken).balanceOf(owner);
-
-    //             // Assertions
-    //             assertEq(ownerBalances.preBToken, 0);
-    //             assertEq(contractBalances.preDToken, 0);
-    //             assertEq(contractBalances.preBToken, 0);
-    //             assertNotEq(contractBalances.preVDToken, 0);
-    //             assertNotEq(contractBalances.preCAToken, 0);
-    //             assertNotEq(contractBalances.preBAToken, 0);
-
-    //             // Bound: upper bound is 150% of preVDToken
-    //             uint256 upperBound = contractBalances.preVDToken + (contractBalances.preVDToken * 50) / 100;
-    //             _dAmtRemainder = bound(_dAmtRemainder, 2, upperBound);
-
-    //             // Mock Uniswap to ensure position gains
-    //             uint256 amountOut = contractBalances.preVDToken + _dAmtRemainder;
-    //             _fund(SWAP_ROUTER, p.dToken, contractBalances.preVDToken + _dAmtRemainder);
-    //             bytes memory code = address(new MockUniswapGains()).code;
-    //             vm.etch(SWAP_ROUTER, code);
-
-    //             // Act
-    //             /// @dev start event recorder
-    //             vm.recordLogs();
-    //             IPosition(p.addr).close(3000, false, 0, type(uint256).max, contractBalances.preBAToken);
-    //             VmSafe.Log[] memory entries = vm.getRecordedLogs();
-
-    //             // Get post-act balances
-    //             contractBalances.postBToken = IERC20(p.bToken).balanceOf(p.addr);
-    //             contractBalances.postVDToken = _getVariableDebtTokenBalance(p.addr, p.dToken);
-    //             contractBalances.postCAToken = _getATokenBalance(p.addr, p.cToken);
-    //             contractBalances.postBAToken = _getATokenBalance(p.addr, p.bToken);
-    //             contractBalances.postDToken = IERC20(p.dToken).balanceOf(p.addr);
-    //             ownerBalances.postBToken = IERC20(p.bToken).balanceOf(owner);
-    //             ownerBalances.postCToken = IERC20(p.cToken).balanceOf(owner);
-
-    //             bytes memory closeEvent = entries[entries.length - 1].data;
-    //             uint256 gains;
-
-    //             assembly {
-    //                 gains := mload(add(closeEvent, 0x20))
-    //             }
-
-    //             // Assertions:
-    //             assertApproxEqAbs(contractBalances.postDToken, amountOut - contractBalances.preVDToken, 1);
-    //             assertEq(contractBalances.postBToken, 0);
-    //             assertEq(contractBalances.postVDToken, 0);
-    //             assertEq(contractBalances.postCAToken, 0);
-    //             assertEq(contractBalances.postBAToken, 0);
-    //             assertEq(gains, 0);
-    //             assertEq(ownerBalances.postBToken, ownerBalances.preBToken);
-    //             assertEq(ownerBalances.postCToken, ownerBalances.preCToken + contractBalances.preCAToken);
-
-    //             // Revert to snapshot
-    //             vm.revertTo(id);
-    //         }
-    //     }
-    // }
 
     /// @dev Tests that close function works when the position has gains and collateral token and base token are the same.
     /// @notice Test strategy:
@@ -566,7 +466,7 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
                 vm.etch(SWAP_ROUTER, code);
 
                 // Act
-                IPosition(p.addr).close(3000, false, 0, type(uint256).max, suppliedBAmt);
+                IPosition(p.addr).close(TEST_POOL_FEE, false, 0, type(uint256).max, suppliedBAmt);
                 entries = vm.getRecordedLogs();
 
                 // Get post-act balances

@@ -97,6 +97,33 @@ contract DebtUtils {
         }
     }
 
+    /**
+     * @notice Calculates the maximum amount of collateral that can be withdrawn after partial debt repayment.
+     */
+    function _getMaxWithdrawCAmtAfterPartialRepay(
+        address _debtService,
+        address _cToken,
+        address _bToken,
+        uint8 _cDecimals,
+        uint8 _bDecimals,
+        uint256 _bAmt
+    ) internal view returns (uint256 maxWithdrawCAmt) {
+        (uint256 cTotalUSD, uint256 dTotalUSD,, uint256 liqThreshold,,) =
+            IPool(AAVE_POOL).getUserAccountData(_debtService);
+
+        uint256 bPriceUSD = IAaveOracle(AAVE_ORACLE).getAssetPrice(_bToken);
+        uint256 cPriceUSD = IAaveOracle(AAVE_ORACLE).getAssetPrice(_cToken);
+        uint256 bAmtUSD = (_bAmt * bPriceUSD) / (10 ** _bDecimals);
+        uint256 cAmtUSD = cTotalUSD - bAmtUSD;
+
+        if (dTotalUSD == 0) {
+            maxWithdrawCAmt = type(uint256).max;
+        } else {
+            maxWithdrawCAmt =
+                ((cAmtUSD - ((dTotalUSD * 1e4) / liqThreshold) - WITHDRAW_BUFFER) * 10 ** (_cDecimals)) / cPriceUSD;
+        }
+    }
+
     function _getMaxBorrow(address _debtService, address _dToken, uint8 _dDecimals)
         internal
         view
@@ -109,5 +136,19 @@ contract DebtUtils {
         uint256 maxBorrowUSD = dMaxUSD - dTotalUSD;
 
         maxBorrow = (maxBorrowUSD * 10 ** (_dDecimals)) / dPriceUSD;
+    }
+
+    function _getDebtUSD(address _debtService) internal view returns (uint256 dTotalUSD) {
+        (, dTotalUSD,,,,) = IPool(AAVE_POOL).getUserAccountData(_debtService);
+    }
+
+    function _getDebtInB(address _debtService, address _bToken, uint8 _bDecimals)
+        internal
+        view
+        returns (uint256 maxWithdrawAmt)
+    {
+        uint256 debtUSD = _getDebtUSD(_debtService);
+        uint256 bPriceUSD = IAaveOracle(AAVE_ORACLE).getAssetPrice(_bToken);
+        maxWithdrawAmt = (debtUSD * (10 ** _bDecimals)) / bPriceUSD;
     }
 }

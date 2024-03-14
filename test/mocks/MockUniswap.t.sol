@@ -45,3 +45,25 @@ contract MockUniswapLosses {
         TransferHelper.safeTransfer(params.tokenOut, msg.sender, amtOut);
     }
 }
+
+contract MockUniswapDirectSwap {
+    function exactOutputSingle(ISwapRouter.ExactOutputSingleParams calldata params)
+        public
+        payable
+        returns (uint256 amtIn)
+    {
+        uint256 amtOut = IERC20(params.tokenOut).balanceOf(address(this));
+        TransferHelper.safeTransferFrom(params.tokenIn, msg.sender, address(this), amtIn);
+        TransferHelper.safeTransfer(params.tokenOut, msg.sender, amtOut);
+    }
+
+    function exactInputSingle(ISwapRouter.ExactInputSingleParams calldata params)
+        public
+        payable
+        returns (uint256 amtOut)
+    {
+        amtOut = IERC20(params.tokenOut).balanceOf(address(this));
+        TransferHelper.safeTransferFrom(params.tokenIn, msg.sender, address(this), params.amountIn);
+        TransferHelper.safeTransfer(params.tokenOut, msg.sender, amtOut);
+    }
+}

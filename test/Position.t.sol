@@ -223,7 +223,7 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
             // Act
             vm.prank(_sender);
             vm.expectRevert(AdminService.Unauthorized.selector);
-            IPosition(addr).close(3000, false, 0, cAmt, dAmt);
+            IPosition(addr).close(TEST_POOL_FEE, false, 0, cAmt, dAmt);
 
             // Revert to snapshot
             vm.revertTo(id);
