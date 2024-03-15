@@ -15,6 +15,7 @@ import {
     FEE_COLLECTOR,
     PROTOCOL_FEE_RATE,
     TEST_POOL_FEE,
+    TEST_LTV,
     CLIENT_RATE,
     USDC
 } from "test/common/Constants.t.sol";
@@ -45,17 +46,13 @@ contract FeeCollectorAddLeverageTest is Test, TokenUtils, DebtUtils, FeeUtils {
         uint256 postTotalClientsFeeTokenBal;
     }
 
-    struct PositionBalances {
-        uint256 preATokenBal;
-        uint256 postATokenBal;
-    }
-
     // Test contracts
     PositionFactory public positionFactory;
     Assets public assets;
     TestPosition[] public positions;
 
     // Test Storage
+    address public owner = address(this);
     address public positionAddr;
 
     function setUp() public {
@@ -75,20 +72,22 @@ contract FeeCollectorAddLeverageTest is Test, TokenUtils, DebtUtils, FeeUtils {
         vm.prank(CONTRACT_DEPLOYER);
         IFeeCollector(FEE_COLLECTOR).setClientRate(CLIENT_RATE);
 
-        // Deploy and store all possible positions where cToken and bToken are the same
+        // Deploy and store all possible positions
         for (uint256 i; i < supportedAssets.length; i++) {
             address cToken = supportedAssets[i];
             for (uint256 j; j < supportedAssets.length; j++) {
                 if (j != i) {
                     address dToken = supportedAssets[j];
-                    address bToken = cToken;
-                    // Exclude positions with no pool
-                    bool poolExists = !((dToken == USDC && bToken == DAI) || (dToken == DAI && bToken == USDC));
-                    if (poolExists) {
-                        positionAddr = positionFactory.createPosition(cToken, dToken, bToken);
-                        TestPosition memory newPosition =
-                            TestPosition({ addr: positionAddr, cToken: cToken, dToken: dToken, bToken: bToken });
-                        positions.push(newPosition);
+                    for (uint256 k; k < supportedAssets.length; k++) {
+                        address bToken = supportedAssets[k];
+                        // Exclude positions with no pool
+                        bool poolExists = !((dToken == USDC && bToken == DAI) || (dToken == DAI && bToken == USDC));
+                        if (k != j && poolExists) {
+                            positionAddr = positionFactory.createPosition(cToken, dToken, bToken);
+                            TestPosition memory newPosition =
+                                TestPosition({ addr: positionAddr, cToken: cToken, dToken: dToken, bToken: bToken });
+                            positions.push(newPosition);
+                        }
                     }
                 }
             }
@@ -106,20 +105,15 @@ contract FeeCollectorAddLeverageTest is Test, TokenUtils, DebtUtils, FeeUtils {
 
     /// @dev
     // - The FeeCollector's feeToken balance should increase by (maxFee - userSavings).
-    // - The feeToken amount supplied as collateral should be _bAmt - (maxFee - userSavings).
     // - The feeToken totalClientBalances should increase by clientFee.
     // - The client's feeToken balance on the FeeCollector contract should increase by clientFee.
-    function testFuzz_AddLeverageWithClient(uint256 _ltv, uint256 _bAmt, uint256 _clientTakeRate, address _client)
-        public
-    {
+    function testFuzz_AddLeverageWithClient(uint256 _dAmt, uint256 _clientTakeRate, address _client) public {
         // Assumptions
         vm.assume(_client != address(0));
-        _ltv = bound(_ltv, 1, 60);
         _clientTakeRate = bound(_clientTakeRate, 0, 100);
 
         // Setup
         FeeCollectorBalances memory feeCollectorBalances;
-        PositionBalances memory positionBalances;
         vm.prank(_client);
         IFeeCollector(FEE_COLLECTOR).setClientTakeRate(_clientTakeRate);
 
@@ -128,17 +122,19 @@ contract FeeCollectorAddLeverageTest is Test, TokenUtils, DebtUtils, FeeUtils {
 
         for (uint256 i; i < positions.length; i++) {
             // Test variables
-            address addr = positions[i].addr;
-            address feeToken = positions[i].bToken;
+            address posAddr = positions[i].addr;
+            address feeToken = positions[i].dToken;
+
+            // Add to position
+            _fund(owner, positions[i].cToken, assets.maxCAmts(positions[i].cToken));
+            IERC20(positions[i].cToken).approve(posAddr, assets.maxCAmts(positions[i].cToken));
+            IPosition(posAddr).add(assets.maxCAmts(positions[i].cToken), TEST_LTV, 0, TEST_POOL_FEE, _client);
 
             // Bound fuzzed variables
-            _bAmt = bound(_bAmt, assets.minCAmts(feeToken), assets.maxCAmts(feeToken));
-
-            // Fund contract with feeToken
-            _fund(addr, feeToken, _bAmt);
+            _dAmt = bound(_dAmt, assets.minDAmts(feeToken), _getMaxBorrow(posAddr, feeToken, assets.decimals(feeToken)));
 
             // Expectations
-            uint256 maxFee = (_bAmt * PROTOCOL_FEE_RATE) / 1000;
+            uint256 maxFee = (_dAmt * PROTOCOL_FEE_RATE) / 1000;
             (uint256 userSavings, uint256 clientFee) = _getExpectedClientAllocations(maxFee, _clientTakeRate);
             uint256 protocolFee = maxFee - userSavings;
 
@@ -146,18 +142,15 @@ contract FeeCollectorAddLeverageTest is Test, TokenUtils, DebtUtils, FeeUtils {
             feeCollectorBalances.preFeeTokenBal = IERC20(feeToken).balanceOf(FEE_COLLECTOR);
             feeCollectorBalances.preClientFeeTokenBal = IFeeCollector(FEE_COLLECTOR).balances(_client, feeToken);
             feeCollectorBalances.preTotalClientsFeeTokenBal = IFeeCollector(FEE_COLLECTOR).totalClientBalances(feeToken);
-            positionBalances.preATokenBal = _getATokenBalance(addr, feeToken);
-            assertEq(positionBalances.preATokenBal, 0);
 
             // Act
-            IPosition(addr).addLeverage(_ltv, 0, TEST_POOL_FEE, _client);
+            IPosition(posAddr).addLeverage(_dAmt, 0, TEST_POOL_FEE, _client);
 
             // Post-act balances
             feeCollectorBalances.postFeeTokenBal = IERC20(feeToken).balanceOf(FEE_COLLECTOR);
             feeCollectorBalances.postClientFeeTokenBal = IFeeCollector(FEE_COLLECTOR).balances(_client, feeToken);
             feeCollectorBalances.postTotalClientsFeeTokenBal =
                 IFeeCollector(FEE_COLLECTOR).totalClientBalances(feeToken);
-            positionBalances.postATokenBal = _getATokenBalance(addr, feeToken);
 
             // Assertions
             assertEq(feeCollectorBalances.postFeeTokenBal, feeCollectorBalances.preFeeTokenBal + protocolFee);
@@ -166,7 +159,6 @@ contract FeeCollectorAddLeverageTest is Test, TokenUtils, DebtUtils, FeeUtils {
                 feeCollectorBalances.postTotalClientsFeeTokenBal,
                 feeCollectorBalances.preTotalClientsFeeTokenBal + clientFee
             );
-            assertApproxEqAbs(positionBalances.postATokenBal, _bAmt - protocolFee, 1);
 
             // Revert to snapshot
             vm.revertTo(id);
@@ -175,55 +167,49 @@ contract FeeCollectorAddLeverageTest is Test, TokenUtils, DebtUtils, FeeUtils {
 
     /// @dev
     // - The FeeCollector's feeToken balance should increase by (maxFee - userSavings).
-    // - The feeToken amount supplied as collateral should be _bAmt - (maxFee - userSavings).
     // - The feeToken totalClientBalances should not change
     // - The above should be true when _client is sent as address(0)
-    function testFuzz_AddLeverageNoClient(uint256 _ltv, uint256 _bAmt) public {
-        // Assumptions
-        _ltv = bound(_ltv, 1, 60);
-
+    function testFuzz_AddLeverageNoClient(uint256 _dAmt) public {
         // Setup
         FeeCollectorBalances memory feeCollectorBalances;
-        PositionBalances memory positionBalances;
 
         // Take snapshot
         uint256 id = vm.snapshot();
 
         for (uint256 i; i < positions.length; i++) {
             // Test variables
-            address addr = positions[i].addr;
-            address feeToken = positions[i].bToken;
+            address posAddr = positions[i].addr;
+            address cToken = positions[i].cToken;
+            address feeToken = positions[i].dToken;
+
+            // Add to position
+            _fund(owner, cToken, assets.maxCAmts(cToken));
+            IERC20(cToken).approve(posAddr, assets.maxCAmts(cToken));
+            IPosition(posAddr).add(assets.maxCAmts(cToken), TEST_LTV, 0, TEST_POOL_FEE, address(0));
 
             // Bound fuzzed variables
-            _bAmt = bound(_bAmt, assets.minCAmts(feeToken), assets.maxCAmts(feeToken));
-
-            // Fund contract with feeToken
-            _fund(addr, feeToken, _bAmt);
+            _dAmt = bound(_dAmt, assets.minDAmts(feeToken), _getMaxBorrow(posAddr, feeToken, assets.decimals(feeToken)));
 
             // Expectations
-            uint256 maxFee = (_bAmt * PROTOCOL_FEE_RATE) / 1000;
+            uint256 maxFee = (_dAmt * PROTOCOL_FEE_RATE) / 1000;
             (uint256 userSavings,) = _getExpectedClientAllocations(maxFee, 0);
             uint256 protocolFee = maxFee - userSavings;
 
             // Pre-act balances
             feeCollectorBalances.preFeeTokenBal = IERC20(feeToken).balanceOf(FEE_COLLECTOR);
             feeCollectorBalances.preTotalClientsFeeTokenBal = IFeeCollector(FEE_COLLECTOR).totalClientBalances(feeToken);
-            positionBalances.preATokenBal = _getATokenBalance(addr, feeToken);
-            assertEq(positionBalances.preATokenBal, 0);
 
             // Act
-            IPosition(addr).addLeverage(_ltv, 0, TEST_POOL_FEE, address(0));
+            IPosition(posAddr).addLeverage(_dAmt, 0, TEST_POOL_FEE, address(0));
 
             // Post-act balances
             feeCollectorBalances.postFeeTokenBal = IERC20(feeToken).balanceOf(FEE_COLLECTOR);
             feeCollectorBalances.postTotalClientsFeeTokenBal =
                 IFeeCollector(FEE_COLLECTOR).totalClientBalances(feeToken);
-            uint256 postPositionATokenBal = _getATokenBalance(addr, feeToken);
 
             // Assertions
             assertEq(feeCollectorBalances.postFeeTokenBal, feeCollectorBalances.preFeeTokenBal + protocolFee);
             assertEq(feeCollectorBalances.postTotalClientsFeeTokenBal, feeCollectorBalances.preTotalClientsFeeTokenBal);
-            assertApproxEqAbs(postPositionATokenBal, _bAmt - protocolFee, 1);
 
             // Revert to snapshot
             vm.revertTo(id);

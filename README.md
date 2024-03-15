@@ -8,21 +8,29 @@ On-chain shorting via Aave and Uniswap.
 
 ## Principles
 
-The following outlines principles for core protocol funcitonality.
+The following outlines principles for **core** protocol funcitonality.
 
 1. Immutable.
-2. No Governance.
+2. No Governance on the core protocol.
 3. No Admin Keys.
 
 ## To-Do
 
 Logic:
 
--   [ ] Add function that lets users supply bToken to Aave to earn interest
-        Tests:
+-   [ ] Add gas optimizations where possible.
+
+Tests:
 
 -   None at the moment🙂
 
 Considerations:
 
 -   None at the moment🙂
+
+Cleanup:
+
+-   [ ] Change `close()` to `reduce()` in `Position.sol`
+-   [ ] Change all relevant test names related from `close` to `reduce`
+-   [ ] Ensure terminology and variable references are consistent across all comments
+-   [ ] Ensure full NatSpec comliance

@@ -100,7 +100,6 @@ contract FeeCollectorAddTest is Test, TokenUtils, FeeUtils, DebtUtils {
 
     /// @dev
     // - The FeeCollector's cToken balance should increase by (maxFee - userSavings).
-    // - The cToken amount supplied as collateral should be cAmt - (maxFee - userSavings).
     // - The cToken totalClientBalances should increase by clientFee.
     // - The client's cToken balance on the FeeCollector contract should increase by clientFee.
     function testFuzz_AddCollectFeesWithClient(uint256 _cAmt, uint256 _clientTakeRate) external payable {
@@ -137,8 +136,6 @@ contract FeeCollectorAddTest is Test, TokenUtils, FeeUtils, DebtUtils {
             feeCollectorBalances.preFeeTokenBal = IERC20(cToken).balanceOf(FEE_COLLECTOR);
             feeCollectorBalances.preClientFeeTokenBal = IFeeCollector(FEE_COLLECTOR).balances(TEST_CLIENT, cToken);
             feeCollectorBalances.preTotalClientsFeeTokenBal = IFeeCollector(FEE_COLLECTOR).totalClientBalances(cToken);
-            uint256 prePositionATokenBal = _getATokenBalance(positionAddr, cToken);
-            assertEq(prePositionATokenBal, 0);
 
             // Act: increase position
             IPosition(positionAddr).add(_cAmt, TEST_LTV, 0, TEST_POOL_FEE, TEST_CLIENT);
@@ -147,7 +144,6 @@ contract FeeCollectorAddTest is Test, TokenUtils, FeeUtils, DebtUtils {
             feeCollectorBalances.postFeeTokenBal = IERC20(cToken).balanceOf(FEE_COLLECTOR);
             feeCollectorBalances.postClientFeeTokenBal = IFeeCollector(FEE_COLLECTOR).balances(TEST_CLIENT, cToken);
             feeCollectorBalances.postTotalClientsFeeTokenBal = IFeeCollector(FEE_COLLECTOR).totalClientBalances(cToken);
-            uint256 postPositionATokenBal = _getATokenBalance(positionAddr, cToken);
 
             // Assertions
             assertEq(feeCollectorBalances.postFeeTokenBal, feeCollectorBalances.preFeeTokenBal + protocolFee);
@@ -156,13 +152,11 @@ contract FeeCollectorAddTest is Test, TokenUtils, FeeUtils, DebtUtils {
                 feeCollectorBalances.postTotalClientsFeeTokenBal,
                 feeCollectorBalances.preTotalClientsFeeTokenBal + clientFee
             );
-            assertApproxEqAbs(postPositionATokenBal, _cAmt - protocolFee, 1);
         }
     }
 
     /// @dev
     // - The FeeCollector's cToken balance should increase by (maxFee - userSavings).
-    // - The cToken amount supplied as collateral should be cAmt - (maxFee - userSavings).
     // - The cToken totalClientBalances should not change
     // - The above should be true when _client is sent as address(0)
     function testFuzz_AddCollectFeesNoClient(uint256 _cAmt) external payable {
@@ -191,8 +185,6 @@ contract FeeCollectorAddTest is Test, TokenUtils, FeeUtils, DebtUtils {
             // Pre-act balances
             feeCollectorBalances.preFeeTokenBal = IERC20(cToken).balanceOf(FEE_COLLECTOR);
             feeCollectorBalances.preTotalClientsFeeTokenBal = IFeeCollector(FEE_COLLECTOR).totalClientBalances(cToken);
-            uint256 prePositionATokenBal = _getATokenBalance(positionAddr, cToken);
-            assertEq(prePositionATokenBal, 0);
 
             // Act: increase position
             IPosition(positionAddr).add(_cAmt, TEST_LTV, 0, TEST_POOL_FEE, address(0));
@@ -200,12 +192,10 @@ contract FeeCollectorAddTest is Test, TokenUtils, FeeUtils, DebtUtils {
             // Post-act balances
             feeCollectorBalances.postFeeTokenBal = IERC20(cToken).balanceOf(FEE_COLLECTOR);
             feeCollectorBalances.postTotalClientsFeeTokenBal = IFeeCollector(FEE_COLLECTOR).totalClientBalances(cToken);
-            uint256 postPositionATokenBal = _getATokenBalance(positionAddr, cToken);
 
             // Assertions
             assertEq(feeCollectorBalances.postFeeTokenBal, feeCollectorBalances.preFeeTokenBal + protocolFee);
             assertEq(feeCollectorBalances.postTotalClientsFeeTokenBal, feeCollectorBalances.preTotalClientsFeeTokenBal);
-            assertApproxEqAbs(postPositionATokenBal, _cAmt - protocolFee, 1);
         }
     }
 }

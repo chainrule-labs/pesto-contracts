@@ -9,19 +9,16 @@ import { VmSafe } from "forge-std/Vm.sol";
 import { PositionFactory } from "src/PositionFactory.sol";
 import {
     Assets,
-    AAVE_POOL,
     AAVE_ORACLE,
     CLIENT_RATE,
     CLIENT_TAKE_RATE,
     CONTRACT_DEPLOYER,
     DAI,
     FEE_COLLECTOR,
-    SUCCESSIVE_ITERATIONS,
     TEST_CLIENT,
     TEST_LTV,
     TEST_POOL_FEE,
-    USDC,
-    WBTC
+    USDC
 } from "test/common/Constants.t.sol";
 import { TokenUtils } from "test/common/utils/TokenUtils.t.sol";
 import { DebtUtils } from "test/common/utils/DebtUtils.t.sol";
@@ -46,13 +43,16 @@ contract PositionAddLeverageTest is Test, TokenUtils, DebtUtils {
         uint256 postBToken;
         uint256 preVDToken;
         uint256 postVDToken;
-        uint256 preAToken;
-        uint256 postAToken;
+        uint256 preCAToken;
+        uint256 preBAToken;
+        uint256 postCAToken;
+        uint256 postBAToken;
     }
 
     struct SuccessiveSums {
         uint256 cAmt;
         uint256 dAmt;
+        uint256 bAmt;
     }
 
     struct LoanData {
@@ -62,6 +62,10 @@ contract PositionAddLeverageTest is Test, TokenUtils, DebtUtils {
         uint256 colBeforeTimeDelta;
         uint256 colAfterTimeDelta;
         uint256 colInterest;
+        uint256 baseBeforeTimeDelta;
+        uint256 baseAfterTimeDelta;
+        uint256 baseInterest;
+        uint256 totalColInterest;
     }
 
     // Test contracts
@@ -94,20 +98,22 @@ contract PositionAddLeverageTest is Test, TokenUtils, DebtUtils {
         vm.prank(CONTRACT_DEPLOYER);
         positionFactory = new PositionFactory(CONTRACT_DEPLOYER);
 
-        // Deploy and store all possible positions where cToken and bToken are the same
+        // Deploy and store all possible positions
         for (uint256 i; i < supportedAssets.length; i++) {
             address cToken = supportedAssets[i];
             for (uint256 j; j < supportedAssets.length; j++) {
                 if (j != i) {
                     address dToken = supportedAssets[j];
-                    address bToken = cToken;
-                    // Exclude positions with no pool
-                    bool poolExists = !((dToken == USDC && bToken == DAI) || (dToken == DAI && bToken == USDC));
-                    if (poolExists) {
-                        positionAddr = positionFactory.createPosition(cToken, dToken, bToken);
-                        TestPosition memory newPosition =
-                            TestPosition({ addr: positionAddr, cToken: cToken, dToken: dToken, bToken: bToken });
-                        positions.push(newPosition);
+                    for (uint256 k; k < supportedAssets.length; k++) {
+                        address bToken = supportedAssets[k];
+                        // Exclude positions with no pool
+                        bool poolExists = !((dToken == USDC && bToken == DAI) || (dToken == DAI && bToken == USDC));
+                        if (k != j && poolExists) {
+                            positionAddr = positionFactory.createPosition(cToken, dToken, bToken);
+                            TestPosition memory newPosition =
+                                TestPosition({ addr: positionAddr, cToken: cToken, dToken: dToken, bToken: bToken });
+                            positions.push(newPosition);
+                        }
                     }
                 }
             }
@@ -123,12 +129,14 @@ contract PositionAddLeverageTest is Test, TokenUtils, DebtUtils {
         }
     }
 
-    /// @dev
-    // - The Position contract's bToken balance after adding leverage should equal bAmt (from swap).
-    // - The Position contract's aToken balance should increase by its bToken balance before adding leverage.
+    /// @dev Tests that addLeverage function works when the collateral token and base token are different.
+    /// @notice Assertions:
+    // - The Position contract's (B_TOKEN) aToken balance should increase by bAmt (from swap).
+    // - The Position contract's (C_TOKEN) aToken balance should not change.
     // - The Position contract's variable debt token balance should increase by dAmt (from borrow).
+    // - The Position contract's D_TOKEN balance should remain 0.
     // - The above should be true for a large range of LTVs and cAmts.
-    function testFuzz_AddLeverage(uint256 _ltv, uint256 _cAmt) public {
+    function testFuzz_AddLeverageDiffCAndB(uint256 _ltv, uint256 _dAmt) public {
         // Setup
         PositionBalances memory positionBalances;
         TestPosition memory p;
@@ -143,67 +151,66 @@ contract PositionAddLeverageTest is Test, TokenUtils, DebtUtils {
             p.dToken = positions[i].dToken;
             p.bToken = positions[i].bToken;
 
-            // Bound fuzzed variables
-            _ltv = bound(_ltv, 1, 60);
-            _cAmt = bound(_cAmt, assets.minCAmts(p.cToken), assets.maxCAmts(p.cToken));
+            if (p.cToken != p.bToken) {
+                // Bound fuzzed variables
+                _ltv = bound(_ltv, 1, 60);
 
-            // Fund owner with collateral
-            _fund(owner, p.cToken, _cAmt);
+                // Open position
+                _fund(owner, p.cToken, assets.maxCAmts(p.cToken));
+                IERC20(p.cToken).approve(p.addr, assets.maxCAmts(p.cToken));
+                IPosition(p.addr).add(assets.maxCAmts(p.cToken), TEST_LTV, 0, TEST_POOL_FEE, TEST_CLIENT);
 
-            // Approve position to spend collateral
-            IERC20(p.cToken).approve(p.addr, _cAmt);
+                // Pre-act balances
+                positionBalances.preBAToken = _getATokenBalance(p.addr, p.bToken);
+                positionBalances.preCAToken = _getATokenBalance(p.addr, p.cToken);
+                positionBalances.preVDToken = _getVariableDebtTokenBalance(p.addr, p.dToken);
+                positionBalances.preBToken = IERC20(p.bToken).balanceOf(p.addr);
 
-            // Add initial position
-            IPosition(p.addr).add(_cAmt, TEST_LTV, 0, TEST_POOL_FEE, TEST_CLIENT);
+                // Get max borrow
+                uint256 maxBorrow = _getMaxBorrow(p.addr, p.dToken, assets.decimals(p.dToken));
+                _dAmt = bound(_dAmt, assets.minDAmts(p.dToken), maxBorrow);
 
-            // Pre-act balances
-            positionBalances.preBToken = IERC20(p.bToken).balanceOf(p.addr);
-            positionBalances.preVDToken = _getVariableDebtTokenBalance(p.addr, p.dToken);
-            positionBalances.preAToken = _getATokenBalance(p.addr, p.cToken);
+                // Act
+                vm.recordLogs();
+                IPosition(p.addr).addLeverage(_dAmt, 0, TEST_POOL_FEE, TEST_CLIENT);
 
-            // Act
-            vm.recordLogs();
-            IPosition(p.addr).addLeverage(_ltv, 0, TEST_POOL_FEE, TEST_CLIENT);
+                // Retrieve bAmt and dAmt from AddLeverage event
+                VmSafe.Log[] memory entries = vm.getRecordedLogs();
+                bytes memory addLeverageEvent = entries[entries.length - 1].data;
+                uint256 bAmt;
+                assembly {
+                    bAmt := mload(add(addLeverageEvent, 0x40))
+                }
 
-            // Retrieve bAmt and dAmt from AddLeverage event
-            VmSafe.Log[] memory entries = vm.getRecordedLogs();
-            bytes memory addLeverageEvent = entries[entries.length - 1].data;
-            uint256 cAmt;
-            uint256 dAmt;
-            uint256 bAmt;
-            assembly {
-                cAmt := mload(add(addLeverageEvent, 0x20))
-                dAmt := mload(add(addLeverageEvent, 0x40))
-                bAmt := mload(add(addLeverageEvent, 0x60))
+                // Post-act balances
+                positionBalances.postBAToken = _getATokenBalance(p.addr, p.bToken);
+                positionBalances.postCAToken = _getATokenBalance(p.addr, p.cToken);
+                positionBalances.postVDToken = _getVariableDebtTokenBalance(p.addr, p.dToken);
+                positionBalances.postBToken = IERC20(p.bToken).balanceOf(p.addr);
+
+                // Assertions
+                assertApproxEqAbs(positionBalances.postBAToken, positionBalances.preBAToken + bAmt, 1);
+                assertEq(positionBalances.postCAToken, positionBalances.preCAToken);
+                assertApproxEqAbs(positionBalances.postVDToken, positionBalances.preVDToken + _dAmt, 1);
+                assertEq(positionBalances.postBToken, 0);
+
+                // Revert to snapshot
+                vm.revertTo(id);
             }
-
-            // Post-act balances
-            positionBalances.postBToken = IERC20(p.bToken).balanceOf(p.addr);
-            positionBalances.postVDToken = _getVariableDebtTokenBalance(p.addr, p.dToken);
-            positionBalances.postAToken = _getATokenBalance(p.addr, p.cToken);
-
-            // Assertions
-            assertEq(positionBalances.postBToken, bAmt);
-            assertApproxEqAbs(positionBalances.postAToken, positionBalances.preAToken + cAmt, 1);
-            assertApproxEqAbs(positionBalances.postVDToken, positionBalances.preVDToken + dAmt, 1);
-
-            // Revert to snapshot
-            vm.revertTo(id);
         }
     }
 
-    /// @dev
-    // - The Position contract's bToken balance after adding leverage should equal bAmt receieved from swap across all addLeverage actions.
-    // - The Position contract's aToken balance should increase by emitted cAmt across all add actions.
-    // - The Position contract's variable debt token balance should increase by dAmt received from borrow across all add actions
+    /// @dev Tests that addLeverage function works when the collateral token and base token are the same.
+    /// @notice Assertions:
+    // - The Position contract's (C_TOKEN) aToken balance should increase by bAmt (from swap).
+    // - The Position contract's (B_TOKEN) aToken balance should equal its (C_TOKEN) aToken balance.
+    // - The Position contract's variable debt token balance should increase by dAmt (from borrow).
+    // - The Position contract's D_TOKEN balance should remain 0.
     // - The above should be true for a large range of LTVs and cAmts.
-    // - The above should be true for all positions where the collateral token is the same as the base token.
-    function testFuzz_AddLeverageSuccessive(uint256 _ltv, uint256 _cAmt, uint256 _time) public {
+    function testFuzz_AddLeverageSameCAndB(uint256 _ltv, uint256 _dAmt) public {
         // Setup
         PositionBalances memory positionBalances;
         TestPosition memory p;
-        SuccessiveSums memory sums;
-        LoanData memory loanData;
 
         // Take snapshot
         uint256 id = vm.snapshot();
@@ -215,83 +222,52 @@ contract PositionAddLeverageTest is Test, TokenUtils, DebtUtils {
             p.dToken = positions[i].dToken;
             p.bToken = positions[i].bToken;
 
-            // Bound fuzzed variables
-            _ltv = bound(_ltv, 1, 60);
-            _cAmt = bound(_cAmt, assets.minCAmts(p.cToken), assets.maxCAmts(p.cToken));
+            if (p.cToken == p.bToken) {
+                // Bound fuzzed variables
+                _ltv = bound(_ltv, 1, 60);
 
-            // Fund owner with collateral
-            _fund(owner, p.cToken, _cAmt);
+                // Open position
+                _fund(owner, p.cToken, assets.maxCAmts(p.cToken));
+                IERC20(p.cToken).approve(p.addr, assets.maxCAmts(p.cToken));
+                IPosition(p.addr).add(assets.maxCAmts(p.cToken), TEST_LTV, 0, TEST_POOL_FEE, TEST_CLIENT);
 
-            // Add initial position
-            IERC20(p.cToken).approve(p.addr, _cAmt);
-            IPosition(p.addr).add(_cAmt, _ltv, 0, TEST_POOL_FEE, TEST_CLIENT);
+                // Pre-act balances
+                positionBalances.preBAToken = _getATokenBalance(p.addr, p.bToken);
+                positionBalances.preCAToken = _getATokenBalance(p.addr, p.cToken);
+                positionBalances.preVDToken = _getVariableDebtTokenBalance(p.addr, p.dToken);
+                positionBalances.preBToken = IERC20(p.bToken).balanceOf(p.addr);
 
-            /// @dev Initial balances to refect inital add
-            uint256 bAmtEndState;
-            sums.cAmt = _getATokenBalance(p.addr, p.cToken);
-            sums.dAmt = _getVariableDebtTokenBalance(p.addr, p.dToken);
-            loanData.debtBeforeTimeDelta = 0;
-            loanData.debtAfterTimeDelta = 0;
-            loanData.debtInterest = 0;
-            loanData.colBeforeTimeDelta = 0;
-            loanData.colAfterTimeDelta = 0;
-            loanData.colInterest = 0;
+                // Get max borrow
+                uint256 maxBorrow = _getMaxBorrow(p.addr, p.dToken, assets.decimals(p.dToken));
+                _dAmt = bound(_dAmt, assets.minDAmts(p.dToken), maxBorrow);
 
-            bool shallowLiquidity = (p.bToken == DAI && p.dToken == WBTC) || (p.bToken == WBTC && p.dToken == DAI);
-            if (!shallowLiquidity) {
-                for (uint256 j; j < SUCCESSIVE_ITERATIONS; j++) {
-                    // Bound fuzzed variables
-                    _time = bound(_time, 1 minutes, 12 weeks);
+                // Act
+                vm.recordLogs();
+                IPosition(p.addr).addLeverage(_dAmt, 0, TEST_POOL_FEE, TEST_CLIENT);
 
-                    // Act
-                    vm.recordLogs();
-                    IPosition(p.addr).addLeverage(TEST_LTV, 0, TEST_POOL_FEE, TEST_CLIENT);
-
-                    // Retrieve bAmt and dAmt from AddLeverage event
-                    VmSafe.Log[] memory entries = vm.getRecordedLogs();
-                    bytes memory addLeverageEvent = entries[entries.length - 1].data;
-                    uint256 netCAmt;
-                    uint256 dAmt;
-                    uint256 bAmt;
-                    assembly {
-                        netCAmt := mload(add(addLeverageEvent, 0x20))
-                        dAmt := mload(add(addLeverageEvent, 0x40))
-                        bAmt := mload(add(addLeverageEvent, 0x60))
-                    }
-
-                    // Sum successive adds
-                    sums.cAmt += (netCAmt + loanData.colInterest);
-                    sums.dAmt += (dAmt + loanData.debtInterest);
-
-                    // Introduce time delta between successive adds
-                    if (j != SUCCESSIVE_ITERATIONS - 1) {
-                        loanData.debtBeforeTimeDelta = _getVariableDebtTokenBalance(p.addr, p.dToken);
-                        loanData.colBeforeTimeDelta = _getATokenBalance(p.addr, p.cToken);
-                        skip(_time);
-                        loanData.debtAfterTimeDelta = _getVariableDebtTokenBalance(p.addr, p.dToken);
-                        loanData.colAfterTimeDelta = _getATokenBalance(p.addr, p.cToken);
-                        loanData.debtInterest = loanData.debtAfterTimeDelta - loanData.debtBeforeTimeDelta;
-                        loanData.colInterest = loanData.colAfterTimeDelta - loanData.colBeforeTimeDelta;
-                    } else {
-                        bAmtEndState = bAmt;
-                    }
+                // Retrieve bAmt and dAmt from AddLeverage event
+                VmSafe.Log[] memory entries = vm.getRecordedLogs();
+                bytes memory addLeverageEvent = entries[entries.length - 1].data;
+                uint256 bAmt;
+                assembly {
+                    bAmt := mload(add(addLeverageEvent, 0x40))
                 }
+
                 // Post-act balances
-                positionBalances.postBToken = IERC20(p.bToken).balanceOf(p.addr);
-                positionBalances.postAToken = _getATokenBalance(p.addr, p.cToken);
+                positionBalances.postBAToken = _getATokenBalance(p.addr, p.bToken);
+                positionBalances.postCAToken = _getATokenBalance(p.addr, p.cToken);
                 positionBalances.postVDToken = _getVariableDebtTokenBalance(p.addr, p.dToken);
+                positionBalances.postBToken = IERC20(p.bToken).balanceOf(p.addr);
 
                 // Assertions
+                assertApproxEqAbs(positionBalances.postCAToken, positionBalances.preCAToken + bAmt, 1);
+                assertEq(positionBalances.postBAToken, positionBalances.postCAToken);
+                assertApproxEqAbs(positionBalances.postVDToken, positionBalances.preVDToken + _dAmt, 1);
+                assertEq(positionBalances.postBToken, 0);
 
-                assertEq(positionBalances.postBToken, bAmtEndState);
-                /// @dev Due to Aave interest, the max delta per iteration is 1.
-                //  Therefore, the max delta for all iterations is the number of iterations.
-                assertApproxEqAbs(positionBalances.postAToken, sums.cAmt, SUCCESSIVE_ITERATIONS);
-                assertApproxEqAbs(positionBalances.postVDToken, sums.dAmt, SUCCESSIVE_ITERATIONS);
+                // Revert to snapshot
+                vm.revertTo(id);
             }
-
-            // Revert to snapshot to standardize chain state for each position
-            vm.revertTo(id);
         }
     }
 }

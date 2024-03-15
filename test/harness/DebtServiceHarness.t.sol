@@ -17,8 +17,12 @@ contract DebtServiceHarness is DebtService {
         return _D_DEC_CONVERSION;
     }
 
-    function exposed_borrow(uint256 _cAmt, uint256 _ltv) external returns (uint256 amount) {
-        return _borrow(_cAmt, _ltv);
+    function exposed_takeLoan(uint256 _cAmt, uint256 _ltv) external returns (uint256 amount) {
+        return _takeLoan(_cAmt, _ltv);
+    }
+
+    function exposed_borrow(uint256 _dAmt) external {
+        return _borrow(_dAmt);
     }
 
     function exposed_repay(uint256 _dAmt) external {
