@@ -60,7 +60,7 @@ jobs:
       - name: Coverage
         run: |
           sudo apt update && sudo apt install -y lcov
-          npm run coverage
+          forge coverage --fork-url ${{ env.RPC_URL }} --report lcov && npm run coverage:filter && npx lcov-summary lcov.info
         id: coverage
 
       - uses: codecov/codecov-action@v3

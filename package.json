@@ -9,13 +9,11 @@
 	},
 	"scripts": {
 		"commit": "cz",
-		"coverage": "forge coverage --fork-url https://arbitrum.llamarpc.com --report lcov && npm run coverage:filter && npx lcov-summary lcov.info",
 		"coverage:filter": "lcov -r lcov.info 'test/*' 'src/dependencies/*' -o lcov.info",
 		"format": "forge fmt",
 		"format:check": "forge fmt --check",
 		"lint:check": "solhint --config ./.solhint.json 'src/**/*.sol'",
-		"prepare": "husky install",
-		"test": "forge test --fork-url https://arbitrum.llamarpc.com --optimize && npm run coverage"
+		"prepare": "husky install"
 	},
 	"commitlint": {
 		"extends": [
