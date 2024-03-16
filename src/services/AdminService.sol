@@ -3,48 +3,41 @@ pragma solidity ^0.8.21;
 
 // Local Imports
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
+import { IAdminService } from "src/interfaces/IAdminService.sol";
 import { SafeTransferLib, ERC20 } from "solmate/utils/SafeTransferLib.sol";
 
-/// @title Position Admin
+/// @title The Position admin service
 /// @author Chain Rule, LLC
-/// @notice Defines logic that Position and DebtService both need access to.
-contract AdminService {
+/// @notice Defines admin logic that Position and DebtService both need access to
+contract AdminService is IAdminService {
     // Immutables: no SLOAD to save gas
+
+    /// @notice The account address of the contract owner.
     address public immutable OWNER;
 
     // Errors
     error Unauthorized();
 
+    /// @notice This function is called when the AdminService is deployed.
+    /// @param _owner The account address of the AdminService contract's owner.
     constructor(address _owner) {
         OWNER = _owner;
     }
 
-    /**
-     * @notice Allows owner to withdraw all of this contract's native token balance.
-     */
+    /// @notice Allows owner to withdraw all of this contract's native token balance.
+    /// @dev This function is only callable by the owner account.
     function extractNative() public payable onlyOwner {
         payable(msg.sender).transfer(address(this).balance);
     }
 
-    /**
-     * @notice Allows owner to withdraw all of a specified ERC20 token's balance from this contract.
-     * @param _token The address of token to remove.
-     */
+    /// @notice Allows owner to withdraw all of a specified ERC20 token's balance from this contract.
+    /// @dev This function is only callable by the owner account.
+    /// @param _token The address of token to remove.
     function extractERC20(address _token) public payable onlyOwner {
         uint256 balance = IERC20(_token).balanceOf(address(this));
 
         SafeTransferLib.safeTransfer(ERC20(_token), msg.sender, balance);
     }
-
-    /**
-     * @notice Executes when native is sent to this contract through a non-existent function.
-     */
-    fallback() external payable { } // solhint-disable-line no-empty-blocks
-
-    /**
-     * @notice Executes when native is sent to this contract with a plain transaction.
-     */
-    receive() external payable { } // solhint-disable-line no-empty-blocks
 
     /// @notice Check if the caller is the owner of the Position contract
     modifier onlyOwner() {

@@ -97,9 +97,7 @@ contract DebtUtils {
         }
     }
 
-    /**
-     * @notice Calculates the maximum amount of collateral that can be withdrawn after partial debt repayment.
-     */
+    /// @notice Calculates the maximum amount of collateral that can be withdrawn after partial debt repayment.
     function _getMaxWithdrawCAmtAfterPartialRepay(
         address _debtService,
         address _cToken,

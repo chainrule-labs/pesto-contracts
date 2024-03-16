@@ -6,23 +6,44 @@ import { DebtService } from "src/services/DebtService.sol";
 import { SwapService } from "src/services/SwapService.sol";
 import { SafeTransferLib, ERC20 } from "solmate/utils/SafeTransferLib.sol";
 import { FeeLib } from "src/libraries/FeeLib.sol";
+import { IPosition } from "src/interfaces/IPosition.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 import { IERC20Permit } from "src/interfaces/token/IERC20Permit.sol";
 import { IERC20Metadata } from "src/interfaces/token/IERC20Metadata.sol";
 
-/// @title Position
+/// @title The position contract
 /// @author Chain Rule, LLC
-/// @notice Manages the owner's individual position
-contract Position is DebtService, SwapService {
+/// @notice Allows an owner account to manage its individual position
+contract Position is DebtService, SwapService, IPosition {
     // Immutables: no SLOAD to save gas
+
+    /// @inheritdoc IPosition
     uint8 public immutable B_DECIMALS;
+
+    /// @inheritdoc IPosition
     address public immutable B_TOKEN;
 
     // Events
+    /// @notice An event emitted when a position is created or added to.
+    /// @param cAmt The amount of collateral token supplied (units: C_DECIMALS).
+    /// @param dAmt The amount of debt token borrowed (units: D_DECIMALS).
+    /// @param bAmt The amount of base token received and subsequently supplied as collateral (units: B_DECIMALS).
     event Add(uint256 cAmt, uint256 dAmt, uint256 bAmt);
+
+    /// @notice An event emitted when leverage is added to a position.
+    /// @param dAmt The amount of debt token borrowed (units: D_DECIMALS).
+    /// @param bAmt The amount of base token received and subsequently supplied as collateral (units: B_DECIMALS).
     event AddLeverage(uint256 dAmt, uint256 bAmt);
+
+    /// @notice An event emitted when a position is closed.
+    /// @param gains The amount of base token gained from the position (units: B_DECIMALS).
     event Close(uint256 gains);
 
+    /// @notice This function is called when a Position contract is deployed.
+    /// @param _owner The account address of the Position contract's owner.
+    /// @param _cToken The address of the token to be used as collateral.
+    /// @param _dToken The address of the token to be borrowed.
+    /// @param _bToken The address of the token to swap _dToken for.
     constructor(address _owner, address _cToken, address _dToken, address _bToken)
         DebtService(_owner, _cToken, _dToken)
     {
@@ -30,14 +51,7 @@ contract Position is DebtService, SwapService {
         B_DECIMALS = IERC20Metadata(_bToken).decimals();
     }
 
-    /**
-     * @notice Adds to this contract's position.
-     * @param _cAmt The amount of collateral token to be supplied for this transaction-specific loan (units: C_DECIMALS).
-     * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
-     * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
-     * @param _poolFee The fee of the Uniswap pool.
-     * @param _client The address of the client operator. Use address(0) if not using a client.
-     */
+    /// @inheritdoc IPosition
     function add(uint256 _cAmt, uint256 _ltv, uint256 _swapAmtOutMin, uint24 _poolFee, address _client)
         public
         payable
@@ -61,19 +75,7 @@ contract Position is DebtService, SwapService {
         emit Add(cAmtNet, dAmt, bAmt);
     }
 
-    /**
-     * @notice Adds to this contract's position with permit, obviating the need for a separate approve tx.
-     *         This function can only be used for ERC-2612-compliant tokens.
-     * @param _cAmt The amount of collateral token to be supplied for this transaction-specific loan (units: C_DECIMALS).
-     * @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
-     * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
-     * @param _poolFee The fee of the Uniswap pool.
-     * @param _client The address of the client operator. Use address(0) if not using a client.
-     * @param _deadline The expiration timestamp of the permit.
-     * @param _v The V parameter of ERC712 signature for the permit.
-     * @param _r The R parameter of ERC712 signature for the permit.
-     * @param _s The S parameter of ERC712 signature for the permit.
-     */
+    /// @inheritdoc IPosition
     function addWithPermit(
         uint256 _cAmt,
         uint256 _ltv,
@@ -85,21 +87,11 @@ contract Position is DebtService, SwapService {
         bytes32 _r,
         bytes32 _s
     ) public payable onlyOwner {
-        // 1. Approve with permit
         IERC20Permit(C_TOKEN).permit(msg.sender, address(this), _cAmt, _deadline, _v, _r, _s);
-
-        // 2. Short
         add(_cAmt, _ltv, _swapAmtOutMin, _poolFee, _client);
     }
 
-    /**
-     * @notice Adds leverage to this contract's position. This function can only be used for positions where the
-     *         collateral token is the same as the base token.
-     * @param _dAmt The amount of D_TOKEN to borrow; use position LTV to identify max amount.
-     * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
-     * @param _poolFee The fee of the Uniswap pool.
-     * @param _client The address of the client operator. Use address(0) if not using a client.
-     */
+    /// @inheritdoc IPosition
     function addLeverage(uint256 _dAmt, uint256 _swapAmtOutMin, uint24 _poolFee, address _client)
         public
         payable
@@ -120,14 +112,7 @@ contract Position is DebtService, SwapService {
         emit AddLeverage(dAmtNet, bAmt);
     }
 
-    /**
-     * @notice Fully closes the position.
-     * @param _poolFee The fee of the Uniswap pool.
-     * @param _exactOutput Whether to swap exact output or exact input (true for exact output, false for exact input).
-     * @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through (only used if _exactOutput is false, supply 0 if true).
-     * @param _withdrawCAmt The amount of C_TOKEN to withdraw (units: C_DECIMALS).
-     * @param _withdrawBAmt The amount of B_TOKEN to withdraw (units: B_DECIMALS).
-     */
+    /// @inheritdoc IPosition
     function close(
         uint24 _poolFee,
         bool _exactOutput,
@@ -155,8 +140,12 @@ contract Position is DebtService, SwapService {
             withdraw(C_TOKEN, _withdrawCAmt, OWNER);
         }
 
-        // 5. pay gains if any: NOTE: can probably be unchecked as bAmtIn will never be greater than _withdrawBAmt
-        uint256 gains = _withdrawBAmt - bAmtIn;
+        // 5. pay gains if any
+        uint256 gains;
+        unchecked {
+            gains = _withdrawBAmt - bAmtIn; // unchecked because bAmtIn will never be greater than _withdrawBAmt
+        }
+
         if (gains != 0) {
             SafeTransferLib.safeTransfer(ERC20(B_TOKEN), OWNER, gains);
         }
