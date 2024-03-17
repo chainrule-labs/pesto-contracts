@@ -76,4 +76,9 @@ contract PositionFactory is Ownable, IPositionFactory {
 
         SafeTransferLib.safeTransfer(ERC20(_token), msg.sender, balance);
     }
+
+    /**
+     * @notice Executes when native is sent to this contract through a non-existent function.
+     */
+    fallback() external payable { } // solhint-disable-line no-empty-blocks
 }

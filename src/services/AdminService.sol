@@ -36,6 +36,11 @@ contract AdminService is IAdminService {
         SafeTransferLib.safeTransfer(ERC20(_token), msg.sender, balance);
     }
 
+    /**
+     * @notice Executes when native is sent to this contract through a non-existent function.
+     */
+    fallback() external payable { } // solhint-disable-line no-empty-blocks
+
     /// @notice Check if the caller is the owner of the Position contract
     modifier onlyOwner() {
         if (msg.sender != OWNER) revert Unauthorized();
