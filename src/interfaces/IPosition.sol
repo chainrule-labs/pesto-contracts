@@ -64,7 +64,7 @@ interface IPosition is IDebtService {
     function addLeverage(uint256 _dAmt, uint256 _swapAmtOutMin, uint24 _poolFee, address _client) external payable;
 
     /// @notice Reduces a position based on the amount of B_TOKEN and C_TOKEN withdrawn.
-    /// @param _poolFee The fee of the Uniswap pool (3000 = 0.3%).
+    /// @param _poolFee The fee of the Uniswap pool (3000 = 0.30%).
     /// @param _exactOutput Whether to swap exact output or exact input (true for exact output, false for exact input).
     /// @param _swapAmtOutMin The min amount of output tokens from swap (supply 0 if _exactOutput = true).
     /// @param _withdrawCAmt The amount of C_TOKEN to withdraw (units: C_DECIMALS).
