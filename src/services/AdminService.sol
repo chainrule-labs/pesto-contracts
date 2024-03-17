@@ -24,15 +24,12 @@ contract AdminService is IAdminService {
         OWNER = _owner;
     }
 
-    /// @notice Allows owner to withdraw all of this contract's native token balance.
-    /// @dev This function is only callable by the owner account.
+    /// @inheritdoc IAdminService
     function extractNative() public payable onlyOwner {
         payable(msg.sender).transfer(address(this).balance);
     }
 
-    /// @notice Allows owner to withdraw all of a specified ERC20 token's balance from this contract.
-    /// @dev This function is only callable by the owner account.
-    /// @param _token The address of token to remove.
+    /// @inheritdoc IAdminService
     function extractERC20(address _token) public payable onlyOwner {
         uint256 balance = IERC20(_token).balanceOf(address(this));
 

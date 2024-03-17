@@ -53,11 +53,11 @@ contract DebtService is AdminService, IDebtService {
     /// @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
     /// @return dAmt The amount of the debt token borrowed (units: D_DECIMALS).
     /// @dev dAmt is calculated as follows:
-    /// c_amt_wei = _cAmt * _C_DEC_CONVERSION (decimals: 18)
-    /// c_amt_usd = c_amt_wei * cPrice (decimals: 18 + 8 => 26)
-    /// debt_amt_usd = c_amt_usd * _ltv / 100 (decimals: 26)
-    /// debt_amt_usd_d_decimals = debt_amt_usd / _D_DEC_CONVERSION (decimals: 26 - (18 - D_DECIMALS))
-    /// dAmt = debt_amt_d_decimals = debt_amt_usd_d_decimals / dPrice (decimals: D_DECIMALS)
+    /// @dev c_amt_wei = _cAmt * _C_DEC_CONVERSION (decimals: 18)
+    /// @dev c_amt_usd = c_amt_wei * cPrice (decimals: 18 + 8 => 26)
+    /// @dev debt_amt_usd = c_amt_usd * _ltv / 100 (decimals: 26)
+    /// @dev debt_amt_usd_d_decimals = debt_amt_usd / _D_DEC_CONVERSION (decimals: 26 - (18 - D_DECIMALS))
+    /// @dev dAmt = debt_amt_d_decimals = debt_amt_usd_d_decimals / dPrice (decimals: D_DECIMALS)
     function _takeLoan(uint256 _cAmt, uint256 _ltv) internal returns (uint256 dAmt) {
         // 1. Supply collateral to Aave
         SafeTransferLib.safeApprove(ERC20(C_TOKEN), AAVE_POOL, _cAmt);
@@ -103,23 +103,14 @@ contract DebtService is AdminService, IDebtService {
         IPool(AAVE_POOL).supply(_bToken, _bAmt, address(this), 0);
     }
 
-    /// @notice Increases the collateral amount backing this contract's loan.
-    /// @dev This function is only callable by the owner account.
-    /// @param _cAmt The amount of collateral to be supplied (units: C_DECIMALS).
+    /// @inheritdoc IDebtService
     function addCollateral(uint256 _cAmt) public payable onlyOwner {
         SafeTransferLib.safeTransferFrom(ERC20(C_TOKEN), msg.sender, address(this), _cAmt);
         SafeTransferLib.safeApprove(ERC20(C_TOKEN), AAVE_POOL, _cAmt);
         IPool(AAVE_POOL).supply(C_TOKEN, _cAmt, address(this), 0);
     }
 
-    /// @notice Increases the collateral amount for this contract's loan with permit, obviating the need for a separate approve tx.
-    ///         This function can only be used for ERC-2612-compliant tokens.
-    /// @dev This function is only callable by the owner account.
-    /// @param _cAmt The amount of collateral to be supplied (units: C_DECIMALS).
-    /// @param _deadline The expiration timestamp of the permit.
-    /// @param _v The V parameter of ERC712 signature for the permit.
-    /// @param _r The R parameter of ERC712 signature for the permit.
-    /// @param _s The S parameter of ERC712 signature for the permit.
+    /// @inheritdoc IDebtService
     function addCollateralWithPermit(uint256 _cAmt, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s)
         public
         payable
@@ -129,33 +120,18 @@ contract DebtService is AdminService, IDebtService {
         addCollateral(_cAmt);
     }
 
-    /// @notice Withdraws collateral token from Aave to specified recipient.
-    /// @dev This function is only callable by the owner account.
-    /// @param _token The address of the collateral token to be withdrawn (C_TOKEN or B_TOKEN).
-    /// @param _amt The amount of collateral to be withdrawn (units: C_DECIMALS or B_DECIMALS).
-    /// @param _recipient The recipient of the funds.
+    /// @inheritdoc IDebtService
     function withdraw(address _token, uint256 _amt, address _recipient) public payable onlyOwner {
         IPool(AAVE_POOL).withdraw(_token, _amt, _recipient);
     }
 
-    /// @notice Repays any outstanding debt to Aave.
-    /// @dev This function is only callable by the owner account.
-    /// @param _dAmt The amount of debt token to repay to Aave (units: D_DECIMALS).
-    ///              To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
+    /// @inheritdoc IDebtService
     function repay(uint256 _dAmt) public payable onlyOwner {
         SafeTransferLib.safeTransferFrom(ERC20(D_TOKEN), msg.sender, address(this), _dAmt);
         _repay(_dAmt);
     }
 
-    /// @notice Repays any outstanding debt to Aave and transfers remaining collateral from Aave to owner,
-    ///         with permit, obviating the need for a separate approve tx. This function can only be used for ERC-2612-compliant tokens.
-    /// @dev This function is only callable by the owner account.
-    /// @param _dAmt The amount of debt token to repay to Aave (units: D_DECIMALS).
-    ///              To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
-    /// @param _deadline The expiration timestamp of the permit.
-    /// @param _v The V parameter of ERC712 signature for the permit.
-    /// @param _r The R parameter of ERC712 signature for the permit.
-    /// @param _s The S parameter of ERC712 signature for the permit.
+    /// @inheritdoc IDebtService
     function repayWithPermit(uint256 _dAmt, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s)
         public
         payable

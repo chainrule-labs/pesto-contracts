@@ -12,7 +12,7 @@ interface IFeeCollector {
     /// @notice The maximum percentage of protocol fees allocated to clients.
     function clientRate() external view returns (uint256);
 
-    /// @notice Returns the take rate of the specified client operator; the percentage of the client rate that the operator keeps.
+    /// @notice Returns the take rate of the specified client operator (% of client rate that the operator keeps).
     /// @dev Example: clientTakeRates[client] = clientTakeRate
     /// @param _client A client operator address.
     /// @return clientTakeRate The percentage of the client rate that the operator keeps.
@@ -31,9 +31,9 @@ interface IFeeCollector {
     /// @return balance The balance for the specified token for the specified client operator.
     function balances(address _client, address _token) external view returns (uint256);
 
-    /// @notice Collects fees from Position contracts when collateral is added.
+    /// @notice Collects fees from Position contracts.
     /// @param _client The address where a client operator will receive protocols fees.
-    /// @param _token The token to collect fees in (the collateral token of the calling Position contract).
+    /// @param _token The token to collect fees in (collateral token or debt token of the calling Position contract).
     /// @param _amt The total amount of fees to collect.
     function collectFees(address _client, address _token, uint256 _amt, uint256 _clientFee) external payable;
 
@@ -41,17 +41,12 @@ interface IFeeCollector {
     /// @param _token The token address to withdraw.
     function clientWithdraw(address _token) external payable;
 
-    /// @notice Allows clients to set the percentage of the clientRate they will receive each revenue-generating tx.
-    ///         Amounts less than 100 will give the calling client's users a protocol fee discount:
-    ///         clientPercentOfProtocolFee = clientRate * _clientTakeRate
-    ///         userPercentOfProtocolFee =  clientRate * (1 - _clientTakeRate)
-    ///         clientFee = protocolFee * clientPercentOfProtocolFee
-    ///         userSavings = protocolFee * userPercentOfProtocolFee
-    /// @param _clientTakeRate The percentage of the clientRate the client will receive each revenue-generating tx (100 = 100%).
+    /// @notice Allows clients to set the percentage of clientRate they receive each revenue-generating tx.
+    /// @dev Amounts less than 100 will give the calling client's users a protocol fee discount.
+    /// @param _clientTakeRate The percentage of clientRate the client receives (100 = 100%).
     function setClientTakeRate(uint256 _clientTakeRate) external payable;
 
-    /// @notice Returns the amount discounted from the protocol fee for using the provided client,
-    ///         and the amount of fees the client will receive.
+    /// @notice Returns discount amount and client fees when using the provided client.
     /// @param _client The address where a client operator will receive protocols fees.
     /// @param _maxFee The maximum amount of fees the protocol will collect.
     /// @return userSavings The amount of fees discounted from the protocol fee.

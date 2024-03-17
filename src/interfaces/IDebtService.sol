@@ -22,8 +22,8 @@ interface IDebtService is IAdminService {
     /// @param _cAmt The amount of collateral to be supplied (units: C_DECIMALS).
     function addCollateral(uint256 _cAmt) external payable;
 
-    /// @notice Increases the collateral amount for this contract's loan with permit,
-    ///         obviating the need for a separate approve tx. This function can only be used for ERC-2612-compliant tokens.
+    /// @notice Increases the collateral amount for this contract's loan with permit (no separate approve tx).
+    /// @dev This function can only be used for ERC-2612-compliant tokens.
     /// @param _cAmt The amount of collateral to be supplied (units: C_DECIMALS).
     /// @param _deadline The expiration timestamp of the permit.
     /// @param _v The V parameter of ERC712 signature for the permit.
@@ -33,21 +33,21 @@ interface IDebtService is IAdminService {
         external
         payable;
 
-    /// @notice Withdraws collateral token from Aave to specified recipient.
+    /// @notice Withdraws collateral from Aave to the specified recipient.
     /// @param _token The address of the collateral token to be withdrawn (C_TOKEN or B_TOKEN).
     /// @param _amt The amount of collateral to be withdrawn (units: C_DECIMALS or B_DECIMALS).
     /// @param _recipient The recipient of the funds.
     function withdraw(address _token, uint256 _amt, address _recipient) external payable;
 
-    /// @notice Repays any outstanding debt to Aave and transfers remaining collateral from Aave to owner.
+    /// @notice Repays outstanding debt to Aave.
+    /// @dev To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
     /// @param _dAmt The amount of debt token to repay to Aave (units: D_DECIMALS).
-    ///              To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
     function repay(uint256 _dAmt) external payable;
 
-    /// @notice Repays any outstanding debt to Aave and transfers remaining collateral from Aave to owner,
-    ///         with permit, obviating the need for a separate approve tx. This function can only be used for ERC-2612-compliant tokens.
+    /// @notice Repays outstanding debt to Aave with permit (no separate approve tx).
+    /// @dev This function can only be used for ERC-2612-compliant tokens.
+    /// @dev To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
     /// @param _dAmt The amount of debt token to repay to Aave (units: D_DECIMALS).
-    ///              To pay off entire debt, _dAmt = debtOwed + smallBuffer (to account for interest).
     /// @param _deadline The expiration timestamp of the permit.
     /// @param _v The V parameter of ERC712 signature for the permit.
     /// @param _r The R parameter of ERC712 signature for the permit.

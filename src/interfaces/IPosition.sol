@@ -11,7 +11,7 @@ interface IPosition is IDebtService {
     **
     ******************************************************************************/
 
-    /// @notice Returns the address of this position's base token (the token that the debt token is swapped for when shorting).
+    /// @notice Returns the address of base token (the token that D_TOKEN is swapped for).
     function B_TOKEN() external view returns (address);
 
     /// @notice Returns the number of decimals this position's base token is denominated in.
@@ -27,18 +27,18 @@ interface IPosition is IDebtService {
     /// @param _cAmt The amount of collateral token to be supplied for this transaction-specific loan (units: C_DECIMALS).
     /// @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
     /// @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
-    /// @param _poolFee The fee of the Uniswap pool.
+    /// @param _poolFee The fee of the Uniswap pool (3000 = 0.30%).
     /// @param _client The address of the client operator. Use address(0) if not using a client.
     function add(uint256 _cAmt, uint256 _ltv, uint256 _swapAmtOutMin, uint24 _poolFee, address _client)
         external
         payable;
 
-    /// @notice Adds to this contract's position with permit, obviating the need for a separate approve tx.
-    ///         This function can only be used for ERC-2612-compliant tokens.
+    /// @notice Adds to this contract's position with permit (no separate approve tx).
+    /// @dev This function can only be used for ERC-2612-compliant tokens.
     /// @param _cAmt The amount of collateral token to be supplied for this transaction-specific loan (units: C_DECIMALS).
     /// @param _ltv The desired loan-to-value ratio for this transaction-specific loan (ex: 75 is 75%).
     /// @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
-    /// @param _poolFee The fee of the Uniswap pool.
+    /// @param _poolFee The fee of the Uniswap pool (3000 = 0.30%).
     /// @param _client The address of the client operator. Use address(0) if not using a client.
     /// @param _deadline The expiration timestamp of the permit.
     /// @param _v The V parameter of ERC712 signature for the permit.
@@ -59,14 +59,14 @@ interface IPosition is IDebtService {
     /// @notice Adds leverage to this contract's position.
     /// @param _dAmt The amount of D_TOKEN to borrow; use position LTV to identify max amount.
     /// @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through.
-    /// @param _poolFee The fee of the Uniswap pool.
+    /// @param _poolFee The fee of the Uniswap pool (3000 = 0.30%).
     /// @param _client The address of the client operator. Use address(0) if not using a client.
     function addLeverage(uint256 _dAmt, uint256 _swapAmtOutMin, uint24 _poolFee, address _client) external payable;
 
-    /// @notice Fully closes the position.
-    /// @param _poolFee The fee of the Uniswap pool.
+    /// @notice Reduces a position based on the amount of B_TOKEN and C_TOKEN withdrawn.
+    /// @param _poolFee The fee of the Uniswap pool (3000 = 0.3%).
     /// @param _exactOutput Whether to swap exact output or exact input (true for exact output, false for exact input).
-    /// @param _swapAmtOutMin The minimum amount of output tokens from swap for the tx to go through (only used if _exactOutput is false, supply 0 if true).
+    /// @param _swapAmtOutMin The min amount of output tokens from swap (supply 0 if _exactOutput = true).
     /// @param _withdrawCAmt The amount of C_TOKEN to withdraw (units: C_DECIMALS).
     /// @param _withdrawBAmt The amount of B_TOKEN to withdraw (units: B_DECIMALS).
     function close(
