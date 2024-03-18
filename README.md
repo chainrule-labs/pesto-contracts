@@ -12,13 +12,13 @@ The following outlines principles for **core** protocol funcitonality.
 
 1. Immutable.
 2. No Governance on the core protocol.
-3. No Admin Keys.
+3. No Admin Keys on the core protocol.
 
 ## To-Do
 
 Logic:
 
--   [ ] Add gas optimizations where possible.
+-   None at the moment🙂
 
 Tests:
 
@@ -26,7 +26,7 @@ Tests:
 
 Considerations:
 
--   None at the moment🙂
+-   [ ] Consider moving the protocol fee rate to the fee collector contract.
 
 Cleanup:
 

@@ -5,18 +5,21 @@ pragma solidity ^0.8.21;
 import { Position } from "src/Position.sol";
 import { Ownable } from "src/dependencies/access/Ownable.sol";
 import { SafeTransferLib, ERC20 } from "solmate/utils/SafeTransferLib.sol";
+import { IPositionFactory } from "src/interfaces/IPositionFactory.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
-/// @title Position Factory
+/// @title The position factory contract
 /// @author Chain Rule, LLC
-/// @notice Creates user position contracts and stores their addresses
-contract PositionFactory is Ownable {
+/// @notice Creates user position contracts and stores their addresses for all users
+contract PositionFactory is Ownable, IPositionFactory {
     // Constants: no SLOAD to save gas
     address private constant CONTRACT_DEPLOYER = 0x0a5B347509621337cDDf44CBCf6B6E7C9C908CD2;
 
     // Factory Storage
-    /// @dev Mapping from owner to cToken to dToken to bToken to position
+    /// @inheritdoc IPositionFactory
     mapping(address => mapping(address => mapping(address => mapping(address => address)))) public positions;
+
+    /// @notice A mapping of all positions owned by a user.
     mapping(address => address[]) public positionsLookup;
 
     // Errors
@@ -24,18 +27,18 @@ contract PositionFactory is Ownable {
     error PositionExists();
 
     // Events
+    /// @notice An event emitted when a position contract is created.
+    /// @param owner The owner of the created Position contract.
+    /// @param position The address of the created Position contract.
     event PositionCreated(address indexed owner, address indexed position);
 
+    /// @notice This function is called when the PositionFactory is deployed.
+    /// @param _owner The account address of the PositionFactory contract's owner.
     constructor(address _owner) Ownable(_owner) {
         if (msg.sender != CONTRACT_DEPLOYER) revert Unauthorized();
     }
 
-    /**
-     * @notice Deploys a Position contract for msg.sender, given a _cToken, _dToken, and _bToken.
-     * @param _cToken The address of the token to be used as collateral.
-     * @param _dToken The address of the token to be borrowed.
-     * @param _bToken The address of the token to swap _dToken for.
-     */
+    /// @inheritdoc IPositionFactory
     function createPosition(address _cToken, address _dToken, address _bToken)
         public
         payable
@@ -51,10 +54,7 @@ contract PositionFactory is Ownable {
         emit PositionCreated(msg.sender, position);
     }
 
-    /**
-     * @notice Returns a list of contract addresses for the given _positionOwner.
-     * @param _positionOwner The owner of the Position contracts.
-     */
+    /// @inheritdoc IPositionFactory
     function getPositions(address _positionOwner) public view returns (address[] memory) {
         return positionsLookup[_positionOwner];
     }
@@ -64,17 +64,13 @@ contract PositionFactory is Ownable {
     **  ADMIN FUNCTIONS
     **
     ******************************************************************************/
-    /**
-     * @notice Allows OWNER to withdraw all of this contract's native token balance.
-     */
+
+    /// @inheritdoc IPositionFactory
     function extractNative() public payable onlyOwner {
         payable(msg.sender).transfer(address(this).balance);
     }
 
-    /**
-     * @notice Allows OWNER to withdraw all of a specified ERC20 token's balance from this contract.
-     * @param _token The address of token to remove.
-     */
+    /// @inheritdoc IPositionFactory
     function extractERC20(address _token) public payable onlyOwner {
         uint256 balance = IERC20(_token).balanceOf(address(this));
 
@@ -85,9 +81,4 @@ contract PositionFactory is Ownable {
      * @notice Executes when native is sent to this contract through a non-existent function.
      */
     fallback() external payable { } // solhint-disable-line no-empty-blocks
-
-    /**
-     * @notice Executes when native is sent to this contract with a plain transaction.
-     */
-    receive() external payable { } // solhint-disable-line no-empty-blocks
 }
