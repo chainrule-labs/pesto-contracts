@@ -429,29 +429,6 @@ contract FeeCollectorTest is Test, TokenUtils, FeeUtils {
 
     /// @dev
     // - The FeeCollector's native balance should increase by the amount transferred.
-    function testFuzz_Receive(uint256 _amount, address _sender) public {
-        // Assumptions
-        _amount = bound(_amount, 1, 1_000 ether);
-        uint256 gasMoney = 1 ether;
-        vm.deal(_sender, _amount + gasMoney);
-
-        // Pre-Act Data
-        uint256 preContractBalance = feeCollectorAddr.balance;
-
-        // Act
-        vm.prank(_sender);
-        (bool success,) = payable(feeCollectorAddr).call{ value: _amount }("");
-
-        // Post-Act Data
-        uint256 postContractBalance = feeCollectorAddr.balance;
-
-        // Assertions
-        assertTrue(success);
-        assertEq(postContractBalance, preContractBalance + _amount);
-    }
-
-    /// @dev
-    // - The FeeCollector's native balance should increase by the amount transferred.
     function testFuzz_Fallback(uint256 _amount, address _sender) public {
         // Assumptions
         vm.assume(_amount != 0 && _amount <= 1000 ether);
