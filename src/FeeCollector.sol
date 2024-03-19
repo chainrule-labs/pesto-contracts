@@ -104,7 +104,7 @@ contract FeeCollector is Ownable, IFeeCollector {
 
     /// @inheritdoc IFeeCollector
     function setClientRate(uint256 _clientRate) public payable onlyOwner {
-        if (_clientRate > 100) revert OutOfRange();
+        if (_clientRate < 30 || _clientRate > 100) revert OutOfRange();
         clientRate = _clientRate;
     }
 

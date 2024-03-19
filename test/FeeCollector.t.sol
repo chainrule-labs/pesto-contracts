@@ -206,7 +206,7 @@ contract FeeCollectorTest is Test, TokenUtils, FeeUtils {
     // - The current client rate should be updated to new client rate
     function testFuzz_SetClientRate(uint256 _clientRate) external payable {
         // Bound fuzzed variables
-        _clientRate = bound(_clientRate, 0, 100);
+        _clientRate = bound(_clientRate, 30, 100);
 
         // Pre-act data
         uint256 preClientRate = feeCollector.clientRate();
@@ -229,7 +229,7 @@ contract FeeCollectorTest is Test, TokenUtils, FeeUtils {
     // - The clientRate in FeeCollector contract cannot be < 30 or > 100
     function testFuzz_CannotSetClientRateOutOfRange(uint256 _clientRate) external payable {
         // Assumptions
-        vm.assume(_clientRate > 100);
+        vm.assume(_clientRate < 30 || _clientRate > 100);
 
         // Act
         vm.prank(CONTRACT_DEPLOYER);

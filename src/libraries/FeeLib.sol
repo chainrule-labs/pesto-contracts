@@ -18,8 +18,7 @@ library FeeLib {
     /// @param _client The address where a client operator will receive protocols fees.
     /// @return cAmtNet The resulting amount of collateral to be supplied after fees are taken.
     function takeProtocolFee(address _token, uint256 _amt, address _client) internal returns (uint256 cAmtNet) {
-        uint256 feeRate = IFeeCollector(FEE_COLLECTOR).feeRate();
-        uint256 maxFee = (_amt * feeRate) / 1000;
+        uint256 maxFee = (_amt * IFeeCollector(FEE_COLLECTOR).feeRate()) / 1000;
         (uint256 userSavings, uint256 clientFee) = IFeeCollector(FEE_COLLECTOR).getClientAllocations(_client, maxFee);
         uint256 totalFee = maxFee - userSavings;
         cAmtNet = _amt - totalFee;
