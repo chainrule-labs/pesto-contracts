@@ -27,14 +27,19 @@ contract FeeCollector is Ownable, IFeeCollector {
     /// @inheritdoc IFeeCollector
     mapping(address => mapping(address => uint256)) public balances;
 
+    /// @inheritdoc IFeeCollector
+    uint256 public feeRate;
+
     // Errors
     error Unauthorized();
     error OutOfRange();
 
     /// @notice This function is called when the FeeCollector is deployed.
     /// @param _owner The account address of the FeeCollector contract's owner.
-    constructor(address _owner) Ownable(_owner) {
+    /// @param _feeRate The protocol fee rate.
+    constructor(address _owner, uint256 _feeRate) Ownable(_owner) {
         if (msg.sender != CONTRACT_DEPLOYER) revert Unauthorized();
+        feeRate = _feeRate;
     }
 
     /// @inheritdoc IFeeCollector
@@ -92,10 +97,14 @@ contract FeeCollector is Ownable, IFeeCollector {
     **
     ******************************************************************************/
 
+    function setFeeRate(uint256 _feeRate) public payable onlyOwner {
+        if (_feeRate > 1000) revert OutOfRange();
+        feeRate = _feeRate;
+    }
+
     /// @inheritdoc IFeeCollector
     function setClientRate(uint256 _clientRate) public payable onlyOwner {
-        if (_clientRate < 30 || _clientRate > 100) revert OutOfRange();
-
+        if (_clientRate > 100) revert OutOfRange();
         clientRate = _clientRate;
     }
 

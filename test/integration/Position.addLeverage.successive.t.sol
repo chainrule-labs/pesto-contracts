@@ -15,6 +15,7 @@ import {
     CONTRACT_DEPLOYER,
     DAI,
     FEE_COLLECTOR,
+    PROTOCOL_FEE_RATE,
     SUCCESSIVE_ITERATIONS,
     TEST_CLIENT,
     TEST_POOL_FEE,
@@ -85,7 +86,7 @@ contract PositionAddLeverageSuccessiveTest is Test, TokenUtils, DebtUtils {
 
         // Deploy FeeCollector
         vm.prank(CONTRACT_DEPLOYER);
-        deployCodeTo("FeeCollector.sol", abi.encode(CONTRACT_DEPLOYER), FEE_COLLECTOR);
+        deployCodeTo("FeeCollector.sol", abi.encode(CONTRACT_DEPLOYER, PROTOCOL_FEE_RATE), FEE_COLLECTOR);
 
         // Set client rate
         vm.prank(CONTRACT_DEPLOYER);

@@ -63,7 +63,7 @@ contract FeeCollectorAddTest is Test, TokenUtils, FeeUtils, DebtUtils {
 
         // Deploy FeeCollector
         vm.prank(CONTRACT_DEPLOYER);
-        deployCodeTo("FeeCollector.sol", abi.encode(CONTRACT_DEPLOYER), FEE_COLLECTOR);
+        deployCodeTo("FeeCollector.sol", abi.encode(CONTRACT_DEPLOYER, PROTOCOL_FEE_RATE), FEE_COLLECTOR);
 
         // Deploy PositionFactory
         vm.prank(CONTRACT_DEPLOYER);

@@ -31,6 +31,9 @@ interface IFeeCollector {
     /// @return balance The balance for the specified token for the specified client operator.
     function balances(address _client, address _token) external view returns (uint256);
 
+    /// @notice Returns the current protocol fee rate.
+    function feeRate() external view returns (uint256);
+
     /// @notice Collects fees from Position contracts.
     /// @param _client The address where a client operator will receive protocols fees.
     /// @param _token The token to collect fees in (collateral token or debt token of the calling Position contract).
