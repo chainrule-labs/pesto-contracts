@@ -13,6 +13,7 @@ import {
     CONTRACT_DEPLOYER,
     DAI,
     FEE_COLLECTOR,
+    PROTOCOL_FEE_RATE,
     REPAY_PERCENT,
     SWAP_ROUTER,
     TEST_CLIENT,
@@ -78,7 +79,7 @@ contract PositionCloseLossesTest is Test, TokenUtils, DebtUtils {
 
         // Deploy FeeCollector
         vm.prank(CONTRACT_DEPLOYER);
-        deployCodeTo("FeeCollector.sol", abi.encode(CONTRACT_DEPLOYER), FEE_COLLECTOR);
+        deployCodeTo("FeeCollector.sol", abi.encode(CONTRACT_DEPLOYER, PROTOCOL_FEE_RATE), FEE_COLLECTOR);
 
         // Deploy PositionFactory
         vm.prank(CONTRACT_DEPLOYER);

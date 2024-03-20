@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 interface IFeeCollector {
     /* solhint-disable func-name-mixedcase */
@@ -30,6 +30,9 @@ interface IFeeCollector {
     /// @param _token The token address to check.
     /// @return balance The balance for the specified token for the specified client operator.
     function balances(address _client, address _token) external view returns (uint256);
+
+    /// @notice Returns the current protocol fee rate.
+    function feeRate() external view returns (uint256);
 
     /// @notice Collects fees from Position contracts.
     /// @param _client The address where a client operator will receive protocols fees.

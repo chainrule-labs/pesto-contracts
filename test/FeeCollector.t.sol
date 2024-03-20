@@ -7,7 +7,16 @@ import { Test } from "forge-std/Test.sol";
 // Local Imports
 import { PositionFactory } from "src/PositionFactory.sol";
 import { FeeCollector } from "src/FeeCollector.sol";
-import { Assets, CONTRACT_DEPLOYER, TEST_CLIENT, CLIENT_RATE, USDC, WETH, WBTC } from "test/common/Constants.t.sol";
+import {
+    Assets,
+    CONTRACT_DEPLOYER,
+    CLIENT_RATE,
+    PROTOCOL_FEE_RATE,
+    TEST_CLIENT,
+    USDC,
+    WETH,
+    WBTC
+} from "test/common/Constants.t.sol";
 import { TokenUtils } from "test/common/utils/TokenUtils.t.sol";
 import { FeeUtils } from "test/common/utils/FeeUtils.t.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
@@ -42,7 +51,7 @@ contract FeeCollectorTest is Test, TokenUtils, FeeUtils {
 
         // Deploy FeeCollector
         vm.prank(CONTRACT_DEPLOYER);
-        feeCollector = new FeeCollector(CONTRACT_DEPLOYER);
+        feeCollector = new FeeCollector(CONTRACT_DEPLOYER, PROTOCOL_FEE_RATE);
         feeCollectorAddr = address(feeCollector);
 
         // Deploy PositionFactory
@@ -242,6 +251,54 @@ contract FeeCollectorTest is Test, TokenUtils, FeeUtils {
     }
 
     /// @dev
+    // - The current client rate should be updated to new client rate
+    function testFuzz_SetFeeRate(uint256 _feeRate) external payable {
+        // Bound fuzzed variables
+        _feeRate = bound(_feeRate, 0, 1000);
+
+        // Pre-act data
+        uint256 preFeeRate = feeCollector.feeRate();
+
+        // Assertions
+        assertEq(preFeeRate, PROTOCOL_FEE_RATE);
+
+        // Act
+        vm.prank(CONTRACT_DEPLOYER);
+        feeCollector.setFeeRate(_feeRate);
+
+        // Post-act data
+        uint256 postFeeRate = feeCollector.feeRate();
+
+        // Assertions
+        assertEq(postFeeRate, _feeRate);
+    }
+
+    /// @dev
+    // - The clientRate in FeeCollector contract cannot be > 1000
+    function testFuzz_CannotSetFeeRateOutOfRange(uint256 _feeRate) external payable {
+        // Assumptions
+        vm.assume(_feeRate > 1000);
+
+        // Act
+        vm.prank(CONTRACT_DEPLOYER);
+        vm.expectRevert(FeeCollector.OutOfRange.selector);
+        feeCollector.setFeeRate(_feeRate);
+    }
+
+    /// @dev
+    // - It should revert with Unauthorized() error when called by an unauthorized sender.
+    function testFuzz_CannotSetFeeRateUnauthorized(uint256 _feeRate, address _sender) external payable {
+        // Assumptions
+        _feeRate = bound(_feeRate, 0, 1000);
+        vm.assume(_sender != CONTRACT_DEPLOYER);
+
+        // Act
+        vm.prank(_sender);
+        vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, _sender));
+        feeCollector.setFeeRate(_feeRate);
+    }
+
+    /// @dev
     // - The current client take rate should be updated to new client take rate
     function testFuzz_SetClientTakeRate(uint256 _clientTakeRate) public {
         // Assumptions
@@ -425,28 +482,5 @@ contract FeeCollectorTest is Test, TokenUtils, FeeUtils {
             vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, _sender));
             feeCollector.extractERC20(token);
         }
-    }
-
-    /// @dev
-    // - The FeeCollector's native balance should increase by the amount transferred.
-    function testFuzz_Fallback(uint256 _amount, address _sender) public {
-        // Assumptions
-        vm.assume(_amount != 0 && _amount <= 1000 ether);
-        uint256 gasMoney = 1 ether;
-        vm.deal(_sender, _amount + gasMoney);
-
-        // Pre-Act Data
-        uint256 preContractBalance = feeCollectorAddr.balance;
-
-        // Act
-        vm.prank(_sender);
-        (bool success,) = feeCollectorAddr.call{ value: _amount }(abi.encodeWithSignature("nonExistentFn()"));
-
-        // Post-Act Data
-        uint256 postContractBalance = feeCollectorAddr.balance;
-
-        // Assertions
-        assertTrue(success);
-        assertEq(postContractBalance, preContractBalance + _amount);
     }
 }

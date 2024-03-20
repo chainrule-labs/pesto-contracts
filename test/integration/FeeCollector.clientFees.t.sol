@@ -6,7 +6,7 @@ import { Test } from "forge-std/Test.sol";
 
 // Local Imports
 import { FeeCollector } from "src/FeeCollector.sol";
-import { Assets, CONTRACT_DEPLOYER } from "test/common/Constants.t.sol";
+import { Assets, CONTRACT_DEPLOYER, PROTOCOL_FEE_RATE } from "test/common/Constants.t.sol";
 import { TokenUtils } from "test/common/utils/TokenUtils.t.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
@@ -29,7 +29,7 @@ contract FeeCollectorClientFeesTest is Test, TokenUtils {
 
         // Deploy FeeCollector
         vm.prank(CONTRACT_DEPLOYER);
-        feeCollector = new FeeCollector(CONTRACT_DEPLOYER);
+        feeCollector = new FeeCollector(CONTRACT_DEPLOYER, PROTOCOL_FEE_RATE);
         feeCollectorAddr = address(feeCollector);
     }
 

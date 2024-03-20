@@ -94,7 +94,7 @@ contract PositionAddTest is Test, TokenUtils, DebtUtils, FeeUtils {
 
         // Deploy FeeCollector
         vm.prank(CONTRACT_DEPLOYER);
-        deployCodeTo("FeeCollector.sol", abi.encode(CONTRACT_DEPLOYER), FEE_COLLECTOR);
+        deployCodeTo("FeeCollector.sol", abi.encode(CONTRACT_DEPLOYER, PROTOCOL_FEE_RATE), FEE_COLLECTOR);
 
         // Set client rate
         vm.prank(CONTRACT_DEPLOYER);

@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
-
-pragma abicoder v2;
+pragma solidity 0.8.21;
 
 // Local imports
 import { TransferHelper } from "src/dependencies/uniswap/TransferHelper.sol";
