@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 // Local
 import { Position } from "src/Position.sol";
@@ -78,7 +78,13 @@ contract PositionFactory is Ownable, IPositionFactory {
     }
 
     /**
+<<<<<<< HEAD
      * @notice Executes when native is sent to this contract through a non-existent function.
      */
     fallback() external payable { } // solhint-disable-line no-empty-blocks
+=======
+     * @notice Executes when native is sent to this contract with a plain transaction.
+     */
+    receive() external payable { } // solhint-disable-line no-empty-blocks
+>>>>>>> f79c7b55671c8204d3d03bb5efe0ec65e1f85a29
 }
