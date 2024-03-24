@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 import { ISwapRouter } from "src/interfaces/uniswap/ISwapRouter.sol";
 import { TransferHelper } from "src/dependencies/uniswap/TransferHelper.sol";

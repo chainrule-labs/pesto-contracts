@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 // Local Imports
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
@@ -35,11 +35,6 @@ contract AdminService is IAdminService {
 
         SafeTransferLib.safeTransfer(ERC20(_token), msg.sender, balance);
     }
-
-    /**
-     * @notice Executes when native is sent to this contract through a non-existent function.
-     */
-    fallback() external payable { } // solhint-disable-line no-empty-blocks
 
     /// @notice Check if the caller is the owner of the Position contract
     modifier onlyOwner() {
