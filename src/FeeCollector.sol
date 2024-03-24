@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 // Local Imports
 import { Ownable } from "src/dependencies/access/Ownable.sol";
@@ -119,9 +119,4 @@ contract FeeCollector is Ownable, IFeeCollector {
 
         SafeTransferLib.safeTransfer(ERC20(_token), msg.sender, withdrawAmt);
     }
-
-    /**
-     * @notice Executes when native is sent to this contract through a non-existent function.
-     */
-    fallback() external payable { } // solhint-disable-line no-empty-blocks
 }
