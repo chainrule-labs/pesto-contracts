@@ -1,11 +1,11 @@
 {
 	"name": "v1-core",
-	"description": "Onchain shorting via Aave and Uniswap.",
+	"description": "Pesto is a minimalist, on-chain derivatives protocol that enables users to create independent positions with varying degrees of exposure and hedging strategies.",
 	"author": "Chain Rule, LLC",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/chainrule-labs/shaave.git"
+		"url": "git+https://github.com/chainrule-labs/pesto.git"
 	},
 	"scripts": {
 		"commit": "cz",
