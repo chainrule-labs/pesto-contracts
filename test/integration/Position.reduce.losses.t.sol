@@ -14,6 +14,7 @@ import {
     DAI,
     FEE_COLLECTOR,
     PROTOCOL_FEE_RATE,
+    REPAY_PERCENT,
     SWAP_ROUTER,
     TEST_CLIENT,
     TEST_LTV,
@@ -22,12 +23,12 @@ import {
 } from "test/common/Constants.t.sol";
 import { TokenUtils } from "test/common/utils/TokenUtils.t.sol";
 import { DebtUtils } from "test/common/utils/DebtUtils.t.sol";
-import { MockUniswapDirectSwap } from "test/mocks/MockUniswap.t.sol";
+import { MockUniswapLosses } from "test/mocks/MockUniswap.t.sol";
 import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IPosition } from "src/interfaces/IPosition.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
-contract PositionReduceGainsTest is Test, TokenUtils, DebtUtils {
+contract PositionReduceLossesTest is Test, TokenUtils, DebtUtils {
     /* solhint-disable func-name-mixedcase */
 
     struct TestPosition {
@@ -57,13 +58,9 @@ contract PositionReduceGainsTest is Test, TokenUtils, DebtUtils {
         uint256 postCToken;
     }
 
-    struct RepayData {
-        uint256 debtInB;
-        uint256 repayAmtUSD;
-        uint256 repayAmtInDToken;
-        uint256 maxWithdrawBAmt;
-        uint256 maxWithdrawCAmt;
-        uint256 bATokenAfterRepay;
+    struct SnapShots {
+        uint256 id1;
+        uint256 id2;
     }
 
     // Test contracts
@@ -119,27 +116,32 @@ contract PositionReduceGainsTest is Test, TokenUtils, DebtUtils {
         }
     }
 
-    /// @dev: Simulates reduction where not all B_TOKEN is withdrawn and swapped for D_TOKEN,
-    //        where D_TOKEN amount is less than total debt.
-    // - Position contract's (bToken) AToken balance should decrease by _withdrawBAmt.
-    // - Position contract's (cToken) AToken balance should decrease by _withdrawCAmt.
-    ///  @notice if B_TOKEN withdraw value <= debt value, dAmtOut == debt repayment, so dToken balance == 0.
-    // - Position contract's dToken balance should be 0.
-    // - Position contract's bToken balance should remain 0.
-    // - Position contract's debt on Aave should decrease by amount repaid.
-    // - Owner's cToken balance should increase by _withdrawCAmt.
-    // - Owner's bToken balance should stay the same (no gains).
-    // - Gains should be 0 because if there are any, they are unrealized.
+    /// @dev Tests that reduce function works when the position has losses and collateral token and base token are different.
+    /// @notice Test strategy:
+    // - 1. Open a position.
+    // - 2. Mock Uniswap to ensure position losses.
+    // - 3. Using screenshot, obtain max withdrawable collateral amount after withdrawing all B_TOKEN and partially repaying debt.
+    // - 4. Reduce the position.
+
+    /// @notice assertions.
+    // - Position contract's (bToken) AToken balance should go to 0 (full withdraw).
+    // - Position contract's (cToken) AToken balance should decrease by the amount withdrawn.
+    // - Position contract's dToken balance should be 0; no gains, so all was used for swap.
+    // - Position contract's debt on Aave should decrease by repayment (amount received from the swap).
+    // - Position contract's debt should be greater than 0 after reduce.
+    // - Owner's cToken balance should increase by the amount of collateral withdrawn.
+    // - Owner's bToken balance should not increase; no gains.
+    // - Position contract's gains should be 0.
     // - The above should be true for all supported tokens.
-    function testFuzz_ReducePartialExactInputDiffCAndB(uint256 _withdrawBAmt, uint256 _withdrawCAmt) public {
+    function test_ReduceExactInputDiffCAndB(uint256 withdrawCAmt) public {
         // Setup
         ContractBalances memory contractBalances;
         OwnerBalances memory ownerBalances;
         TestPosition memory p;
-        RepayData memory repayData;
 
         // Take snapshot
         uint256 id = vm.snapshot();
+
         for (uint256 i; i < positions.length; i++) {
             // Test variables
             p.addr = positions[i].addr;
@@ -148,7 +150,7 @@ contract PositionReduceGainsTest is Test, TokenUtils, DebtUtils {
             p.bToken = positions[i].bToken;
 
             if (p.cToken != p.bToken) {
-                // Add to position
+                // Setup: open position
                 _fund(owner, p.cToken, assets.maxCAmts(p.cToken));
                 IERC20(p.cToken).approve(p.addr, assets.maxCAmts(p.cToken));
                 IPosition(p.addr).add(assets.maxCAmts(p.cToken), TEST_LTV, 0, TEST_POOL_FEE, TEST_CLIENT);
@@ -170,50 +172,36 @@ contract PositionReduceGainsTest is Test, TokenUtils, DebtUtils {
                 assertNotEq(contractBalances.preCAToken, 0);
                 assertNotEq(contractBalances.preBAToken, 0);
 
-                // Calculate debt in terms of bToken and bound fuzzed _withdrawBAmt variable
-                repayData.debtInB = _getDebtInB(p.addr, p.bToken, assets.decimals(p.bToken));
-                repayData.maxWithdrawBAmt =
-                    repayData.debtInB <= contractBalances.preBAToken ? repayData.debtInB : contractBalances.preBAToken;
-                _withdrawBAmt = bound(_withdrawBAmt, assets.minCAmts(p.bToken), repayData.maxWithdrawBAmt);
-
-                // Calculate repay amount and bound fuzzed _withdrawCAmt variable
-                uint256 repayID = vm.snapshot();
-                repayData.repayAmtUSD = (_withdrawBAmt * assets.prices(p.bToken)) / (10 ** assets.decimals(p.bToken));
-                repayData.repayAmtInDToken =
-                    ((repayData.repayAmtUSD * (10 ** assets.decimals(p.dToken))) / assets.prices(p.dToken));
-                IPosition(p.addr).withdraw(p.bToken, _withdrawBAmt, owner);
-                _fund(owner, p.dToken, repayData.repayAmtInDToken);
-                IERC20(p.dToken).approve(p.addr, repayData.repayAmtInDToken);
-                IPosition(p.addr).repay(repayData.repayAmtInDToken);
-                repayData.bATokenAfterRepay = contractBalances.preBAToken - _withdrawBAmt;
-                repayData.maxWithdrawCAmt = _getMaxWithdrawCAmtAfterPartialRepay(
-                    p.addr,
-                    p.cToken,
-                    p.bToken,
-                    assets.decimals(p.cToken),
-                    assets.decimals(p.bToken),
-                    repayData.bATokenAfterRepay
-                );
-                vm.revertTo(repayID);
-                _withdrawCAmt = bound(_withdrawCAmt, assets.minCAmts(p.cToken), repayData.maxWithdrawCAmt);
-
-                // Mock Uniswap
-                _fund(SWAP_ROUTER, p.dToken, repayData.repayAmtInDToken);
-                bytes memory code = address(new MockUniswapDirectSwap()).code;
+                // Mock Uniswap to ensure position losses
+                uint256 dAmtOut = contractBalances.preVDToken * REPAY_PERCENT / 100;
+                _fund(SWAP_ROUTER, p.dToken, dAmtOut);
+                bytes memory code = address(new MockUniswapLosses()).code;
                 vm.etch(SWAP_ROUTER, code);
+
+                // Withdraw B_TOKEN and make repayment manually to get exact withdrawCAmt
+                uint256 repayID = vm.snapshot();
+                IPosition(p.addr).withdraw(p.bToken, contractBalances.preBAToken, owner);
+                _fund(owner, p.dToken, dAmtOut);
+                IERC20(p.dToken).approve(p.addr, dAmtOut);
+                IPosition(p.addr).repay(dAmtOut);
+                uint256 maxCTokenWithdrawal = _getMaxWithdrawAmt(p.addr, p.cToken, assets.decimals(p.cToken));
+                vm.revertTo(repayID);
+
+                // Bound fuzzed variables
+                withdrawCAmt = bound(withdrawCAmt, 1, maxCTokenWithdrawal);
 
                 // Act
                 /// @dev start event recorder
                 vm.recordLogs();
-                IPosition(p.addr).reduce(TEST_POOL_FEE, false, 0, _withdrawCAmt, _withdrawBAmt);
+                IPosition(p.addr).reduce(TEST_POOL_FEE, false, 0, withdrawCAmt, contractBalances.preBAToken);
                 VmSafe.Log[] memory entries = vm.getRecordedLogs();
 
                 // Get post-act balances
                 contractBalances.postBToken = IERC20(p.bToken).balanceOf(p.addr);
+                contractBalances.postDToken = IERC20(p.dToken).balanceOf(p.addr);
                 contractBalances.postVDToken = _getVariableDebtTokenBalance(p.addr, p.dToken);
                 contractBalances.postCAToken = _getATokenBalance(p.addr, p.cToken);
                 contractBalances.postBAToken = _getATokenBalance(p.addr, p.bToken);
-                contractBalances.postDToken = IERC20(p.dToken).balanceOf(p.addr);
                 ownerBalances.postBToken = IERC20(p.bToken).balanceOf(owner);
                 ownerBalances.postCToken = IERC20(p.cToken).balanceOf(owner);
 
@@ -224,17 +212,16 @@ contract PositionReduceGainsTest is Test, TokenUtils, DebtUtils {
                     gains := mload(add(reduceEvent, 0x20))
                 }
 
-                // Assertions:
+                // Assertions
+                assertApproxEqAbs(contractBalances.postBAToken, 0, 1);
+                assertApproxEqAbs(contractBalances.postCAToken, contractBalances.preCAToken - withdrawCAmt, 1);
+                assertApproxEqAbs(contractBalances.postVDToken, contractBalances.preVDToken - dAmtOut, 1);
+                assertGt(contractBalances.postVDToken, 0);
                 assertEq(contractBalances.postDToken, 0);
-                assertEq(contractBalances.postBToken, 0);
-                assertApproxEqAbs(
-                    contractBalances.postVDToken, contractBalances.preVDToken - repayData.repayAmtInDToken, 1
-                );
-                assertApproxEqAbs(contractBalances.postCAToken, contractBalances.preCAToken - _withdrawCAmt, 1);
-                assertApproxEqAbs(contractBalances.postBAToken, contractBalances.preBAToken - _withdrawBAmt, 1);
-                assertEq(gains, 0);
+                uint256 withdrawAmt = contractBalances.preCAToken - contractBalances.postCAToken;
+                assertApproxEqAbs(ownerBalances.postCToken, ownerBalances.preCToken + withdrawAmt, 1);
                 assertEq(ownerBalances.postBToken, ownerBalances.preBToken);
-                assertEq(ownerBalances.postCToken, ownerBalances.preCToken + _withdrawCAmt);
+                assertEq(gains, 0);
 
                 // Revert to snapshot
                 vm.revertTo(id);
@@ -242,27 +229,33 @@ contract PositionReduceGainsTest is Test, TokenUtils, DebtUtils {
         }
     }
 
-    /// @dev: Simulates reduction where not all B_TOKEN is withdrawn and swapped for D_TOKEN,
-    //        where D_TOKEN amount is less than total debt.
-    // - Position contract's (cToken) AToken balance should decrease by (_withdrawCAmt + _withdrawBAmt).
-    // - Position contract's (bToken) AToken balance should should equal its (cToken) AToken balance.
-    ///  @notice if B_TOKEN withdraw value <= debt value, dAmtOut == debt repayment, so dToken balance == 0.
-    // - Position contract's dToken balance should be 0.
-    // - Position contract's bToken balance should remain 0.
-    // - Position contract's debt on Aave should decrease by amount repaid.
-    // - Owner's cToken balance should increase by _withdrawCAmt.
-    // - Owner's bToken balance should equal owner's cToken balance.
-    // - Gains should be 0 because if there are any, they are unrealized.
+    /// @dev Tests that reduce function works when the position has losses and collateral token and base token are the same.
+    /// @notice Test strategy:
+    // - 1. Open a position.
+    // - 2. Mock Uniswap to ensure position losses.
+    // - 3. Using screenshot, obtain max withdrawable collateral amount after withdrawing all B_TOKEN and partially repaying debt.
+    // - 4. Reduce the position.
+
+    /// @notice Assertions:
+    // - Position contract's (bToken) AToken balance should decrease by the amount withdrawn.
+    // - Position contract's (cToken) AToken balance should decrease by the amount withdrawn.
+    // - Position contract's dToken balance should be 0; no gains, so all was used for swap.
+    // - Position contract's debt on Aave should decrease by repayment (amount received from the swap).
+    // - Position contract's debt should be greater than 0 after reduce.
+    // - Position contract's gains should be 0.
+    // - Owner's cToken balance should increase by the amount of collateral withdrawn.
+    // - Owner's bToken balance should increase by the amount of collateral withdrawn.
     // - The above should be true for all supported tokens.
-    function testFuzz_ReducePartialExactInputSameCAndB(uint256 _withdrawBAmt, uint256 _withdrawCAmt) public {
+    function test_ReduceExactInputSameCAndB(uint256 withdrawCAmt) public {
         // Setup
         ContractBalances memory contractBalances;
         OwnerBalances memory ownerBalances;
         TestPosition memory p;
-        RepayData memory repayData;
+        SnapShots memory snapshots;
 
         // Take snapshot
-        uint256 id = vm.snapshot();
+        snapshots.id1 = vm.snapshot();
+
         for (uint256 i; i < positions.length; i++) {
             // Test variables
             p.addr = positions[i].addr;
@@ -271,10 +264,20 @@ contract PositionReduceGainsTest is Test, TokenUtils, DebtUtils {
             p.bToken = positions[i].bToken;
 
             if (p.cToken == p.bToken) {
-                // Add to position
+                /// @dev start event recorder
+                vm.recordLogs();
+                // Setup: open position
                 _fund(owner, p.cToken, assets.maxCAmts(p.cToken));
                 IERC20(p.cToken).approve(p.addr, assets.maxCAmts(p.cToken));
                 IPosition(p.addr).add(assets.maxCAmts(p.cToken), TEST_LTV, 0, TEST_POOL_FEE, TEST_CLIENT);
+                VmSafe.Log[] memory entries = vm.getRecordedLogs();
+
+                // Extract amount of base token added to Aave
+                bytes memory addEvent = entries[entries.length - 1].data;
+                uint256 suppliedBAmt;
+                assembly {
+                    suppliedBAmt := mload(add(addEvent, 0x60))
+                }
 
                 // Get pre-act balances
                 contractBalances.preBToken = IERC20(p.bToken).balanceOf(p.addr);
@@ -292,44 +295,35 @@ contract PositionReduceGainsTest is Test, TokenUtils, DebtUtils {
                 assertNotEq(contractBalances.preVDToken, 0);
                 assertNotEq(contractBalances.preCAToken, 0);
                 assertNotEq(contractBalances.preBAToken, 0);
+                assertEq(ownerBalances.preBToken, ownerBalances.preCToken);
 
-                // Calculate debt in terms of bToken and bound fuzzed _withdrawBAmt variable
-                repayData.debtInB = _getDebtInB(p.addr, p.bToken, assets.decimals(p.bToken));
-                repayData.maxWithdrawBAmt =
-                    repayData.debtInB <= contractBalances.preBAToken ? repayData.debtInB : contractBalances.preBAToken;
-                _withdrawBAmt = bound(_withdrawBAmt, assets.minCAmts(p.bToken), repayData.maxWithdrawBAmt);
+                // Mock Uniswap to ensure position losses
+                uint256 dAmtOut = contractBalances.preVDToken * REPAY_PERCENT / 100;
+                _fund(SWAP_ROUTER, p.dToken, dAmtOut);
+                vm.etch(SWAP_ROUTER, address(new MockUniswapLosses()).code);
 
-                // Calculate repay amount and bound fuzzed _withdrawCAmt variable
-                uint256 repayID = vm.snapshot();
-                repayData.repayAmtUSD = (_withdrawBAmt * assets.prices(p.bToken)) / (10 ** assets.decimals(p.bToken));
-                repayData.repayAmtInDToken =
-                    ((repayData.repayAmtUSD * (10 ** assets.decimals(p.dToken))) / assets.prices(p.dToken));
-                IPosition(p.addr).withdraw(p.bToken, _withdrawBAmt, owner);
-                _fund(owner, p.dToken, repayData.repayAmtInDToken);
-                IERC20(p.dToken).approve(p.addr, repayData.repayAmtInDToken);
-                IPosition(p.addr).repay(repayData.repayAmtInDToken);
-                repayData.bATokenAfterRepay = contractBalances.preBAToken - _withdrawBAmt;
-                repayData.maxWithdrawCAmt = contractBalances.preBAToken - repayData.bATokenAfterRepay;
-                vm.revertTo(repayID);
-                _withdrawCAmt = bound(_withdrawCAmt, assets.minCAmts(p.cToken), repayData.maxWithdrawCAmt);
+                // Withdraw B_TOKEN and make repayment manually to get exact withdrawCAmt
+                snapshots.id2 = vm.snapshot();
+                IPosition(p.addr).withdraw(p.bToken, suppliedBAmt, owner);
+                _fund(owner, p.dToken, dAmtOut);
+                IERC20(p.dToken).approve(p.addr, dAmtOut);
+                IPosition(p.addr).repay(dAmtOut);
+                uint256 maxCTokenWithdrawal = _getMaxWithdrawAmt(p.addr, p.cToken, assets.decimals(p.cToken));
+                vm.revertTo(snapshots.id2);
 
-                // Mock Uniswap
-                _fund(SWAP_ROUTER, p.dToken, repayData.repayAmtInDToken);
-                bytes memory code = address(new MockUniswapDirectSwap()).code;
-                vm.etch(SWAP_ROUTER, code);
+                // Bound fuzzed variables
+                withdrawCAmt = bound(withdrawCAmt, 1, maxCTokenWithdrawal);
 
                 // Act
-                /// @dev start event recorder
-                vm.recordLogs();
-                IPosition(p.addr).reduce(TEST_POOL_FEE, false, 0, _withdrawCAmt, _withdrawBAmt);
-                VmSafe.Log[] memory entries = vm.getRecordedLogs();
+                IPosition(p.addr).reduce(TEST_POOL_FEE, false, 0, withdrawCAmt, suppliedBAmt);
+                entries = vm.getRecordedLogs();
 
                 // Get post-act balances
                 contractBalances.postBToken = IERC20(p.bToken).balanceOf(p.addr);
+                contractBalances.postDToken = IERC20(p.dToken).balanceOf(p.addr);
                 contractBalances.postVDToken = _getVariableDebtTokenBalance(p.addr, p.dToken);
                 contractBalances.postCAToken = _getATokenBalance(p.addr, p.cToken);
                 contractBalances.postBAToken = _getATokenBalance(p.addr, p.bToken);
-                contractBalances.postDToken = IERC20(p.dToken).balanceOf(p.addr);
                 ownerBalances.postBToken = IERC20(p.bToken).balanceOf(owner);
                 ownerBalances.postCToken = IERC20(p.cToken).balanceOf(owner);
 
@@ -340,22 +334,22 @@ contract PositionReduceGainsTest is Test, TokenUtils, DebtUtils {
                     gains := mload(add(reduceEvent, 0x20))
                 }
 
-                // Assertions:
+                // Assertions
+                assertApproxEqAbs(
+                    contractBalances.postBAToken, contractBalances.preBAToken - suppliedBAmt - withdrawCAmt, 1
+                );
+                assertApproxEqAbs(
+                    contractBalances.postCAToken, contractBalances.preBAToken - suppliedBAmt - withdrawCAmt, 1
+                );
                 assertEq(contractBalances.postDToken, 0);
-                assertEq(contractBalances.postBToken, 0);
-                assertApproxEqAbs(
-                    contractBalances.postVDToken, contractBalances.preVDToken - repayData.repayAmtInDToken, 1
-                );
-                assertApproxEqAbs(
-                    contractBalances.postCAToken, contractBalances.preCAToken - _withdrawCAmt - _withdrawBAmt, 1
-                );
-                assertEq(contractBalances.postBAToken, contractBalances.postCAToken);
+                assertApproxEqAbs(contractBalances.postVDToken, contractBalances.preVDToken - dAmtOut, 1);
+                assertGt(contractBalances.postVDToken, 0);
                 assertEq(gains, 0);
-                assertEq(ownerBalances.postBToken, ownerBalances.postCToken);
-                assertEq(ownerBalances.postCToken, ownerBalances.preCToken + _withdrawCAmt);
+                assertEq(ownerBalances.postBToken, ownerBalances.preBToken + withdrawCAmt);
+                assertEq(ownerBalances.postCToken, ownerBalances.postBToken);
 
                 // Revert to snapshot
-                vm.revertTo(id);
+                vm.revertTo(snapshots.id1);
             }
         }
     }

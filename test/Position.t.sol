@@ -197,7 +197,7 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
 
     /// @dev
     // - It should revert with Unauthorized() error when called by an unauthorized sender.
-    function testFuzz_CannotClose(address _sender) public {
+    function testFuzz_CannotReduce(address _sender) public {
         // Assumptions
         vm.assume(_sender != owner);
 
@@ -224,7 +224,7 @@ contract PositionTest is Test, TokenUtils, DebtUtils {
             // Act
             vm.prank(_sender);
             vm.expectRevert(AdminService.Unauthorized.selector);
-            IPosition(addr).close(TEST_POOL_FEE, false, 0, cAmt, dAmt);
+            IPosition(addr).reduce(TEST_POOL_FEE, false, 0, cAmt, dAmt);
 
             // Revert to snapshot
             vm.revertTo(id);
