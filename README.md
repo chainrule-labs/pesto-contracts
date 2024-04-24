@@ -26,11 +26,9 @@ Tests:
 
 Considerations:
 
--   [ ] Consider moving the protocol fee rate to the fee collector contract.
+-   None at the moment🙂
 
 Cleanup:
 
 -   [ ] Change `close()` to `reduce()` in `Position.sol`
 -   [ ] Change all relevant test names related from `close` to `reduce`
--   [ ] Ensure terminology and variable references are consistent across all comments
--   [ ] Ensure full NatSpec comliance
