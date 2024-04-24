@@ -35,9 +35,9 @@ contract Position is DebtService, SwapService, IPosition {
     /// @param bAmt The amount of base token received and subsequently supplied as collateral (units: B_DECIMALS).
     event AddLeverage(uint256 dAmt, uint256 bAmt);
 
-    /// @notice An event emitted when a position is closed.
+    /// @notice An event emitted when a position is reduced.
     /// @param gains The amount of base token gained from the position (units: B_DECIMALS).
-    event Close(uint256 gains);
+    event Reduce(uint256 gains);
 
     /// @notice This function is called when a Position contract is deployed.
     /// @param _owner The account address of the Position contract's owner.
@@ -113,7 +113,7 @@ contract Position is DebtService, SwapService, IPosition {
     }
 
     /// @inheritdoc IPosition
-    function close(
+    function reduce(
         uint24 _poolFee,
         bool _exactOutput,
         uint256 _swapAmtOutMin,
@@ -150,6 +150,6 @@ contract Position is DebtService, SwapService, IPosition {
             SafeTransferLib.safeTransfer(ERC20(B_TOKEN), OWNER, gains);
         }
 
-        emit Close(gains);
+        emit Reduce(gains);
     }
 }

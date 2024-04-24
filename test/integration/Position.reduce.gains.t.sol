@@ -28,7 +28,7 @@ import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IPosition } from "src/interfaces/IPosition.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
-contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
+contract PositionReduceGainsTest is Test, TokenUtils, DebtUtils {
     /* solhint-disable func-name-mixedcase */
 
     struct TestPosition {
@@ -120,7 +120,7 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
     // - Owner's cToken balance should increase by the amount of collateral withdrawn.
     // - Owner's bToken balance should increase by the position's gains amount.
     // - The above should be true for all supported tokens.
-    function test_CloseExactOutputDiffCAndB() public {
+    function test_ReduceExactOutputDiffCAndB() public {
         // Setup
         ContractBalances memory contractBalances;
         OwnerBalances memory ownerBalances;
@@ -165,7 +165,7 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
                 /// @dev start event recorder
                 vm.recordLogs();
                 /// @dev since profitable, withdrawCAmt is max int and withdrawBAmt is its (base) AToken balance
-                IPosition(p.addr).close(TEST_POOL_FEE, true, 0, type(uint256).max, contractBalances.preBAToken);
+                IPosition(p.addr).reduce(TEST_POOL_FEE, true, 0, type(uint256).max, contractBalances.preBAToken);
                 VmSafe.Log[] memory entries = vm.getRecordedLogs();
 
                 // Get post-act balances
@@ -176,11 +176,11 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
                 ownerBalances.postBToken = IERC20(p.bToken).balanceOf(owner);
                 ownerBalances.postCToken = IERC20(p.cToken).balanceOf(owner);
 
-                bytes memory closeEvent = entries[entries.length - 1].data;
+                bytes memory reduceEvent = entries[entries.length - 1].data;
                 uint256 gains;
 
                 assembly {
-                    gains := mload(add(closeEvent, 0x20))
+                    gains := mload(add(reduceEvent, 0x20))
                 }
 
                 // Assertions:
@@ -209,7 +209,7 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
     // - Owner's cToken balance should increase by (collateral withdrawn + position's gains).
     // - Owner's bToken balance should equal its cToken balance.
     // - The above should be true for all supported tokens.
-    function test_CloseExactOutputSameCAndB() public {
+    function test_ReduceExactOutputSameCAndB() public {
         // Setup
         ContractBalances memory contractBalances;
         OwnerBalances memory ownerBalances;
@@ -262,7 +262,7 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
 
                 // Act
                 /// @dev since profitable, withdrawCAmt is max int and withdrawBAmt is its (base) AToken balance
-                IPosition(p.addr).close(TEST_POOL_FEE, true, 0, type(uint256).max, suppliedBAmt);
+                IPosition(p.addr).reduce(TEST_POOL_FEE, true, 0, type(uint256).max, suppliedBAmt);
                 entries = vm.getRecordedLogs();
 
                 // Get post-act balances
@@ -273,11 +273,11 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
                 ownerBalances.postBToken = IERC20(p.bToken).balanceOf(owner);
                 ownerBalances.postCToken = IERC20(p.cToken).balanceOf(owner);
 
-                bytes memory closeEvent = entries[entries.length - 1].data;
+                bytes memory reduceEvent = entries[entries.length - 1].data;
                 uint256 gains;
 
                 assembly {
-                    gains := mload(add(closeEvent, 0x20))
+                    gains := mload(add(reduceEvent, 0x20))
                 }
 
                 // Assertions:
@@ -303,7 +303,7 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
         }
     }
 
-    /// @dev: Simulates close where all B_TOKEN is withdrawn and swapped for D_TOKEN,
+    /// @dev: Simulates reduction where all B_TOKEN is withdrawn and swapped for D_TOKEN,
     //        where D_TOKEN amount is greater than total debt.
     // - Position contract's (bToken) AToken balance should go to 0 (full withdraw).
     // - Position contract's (cToken) AToken balance should go to 0 (full withdraw).
@@ -314,7 +314,7 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
     // - Owner's cToken balance should increase by the amount of collateral withdrawn.
     // - Owner's bToken balance should stay the same, as gains will be in debt token if exactInput is called.
     // - The above should be true for all supported tokens.
-    function testFuzz_CloseFullExactInputDiffCAndB(uint256 _dAmtRemainder) public {
+    function testFuzz_ReduceFullExactInputDiffCAndB(uint256 _dAmtRemainder) public {
         // Setup
         ContractBalances memory contractBalances;
         OwnerBalances memory ownerBalances;
@@ -366,7 +366,7 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
                 // Act
                 /// @dev start event recorder
                 vm.recordLogs();
-                IPosition(p.addr).close(TEST_POOL_FEE, false, 0, type(uint256).max, contractBalances.preBAToken);
+                IPosition(p.addr).reduce(TEST_POOL_FEE, false, 0, type(uint256).max, contractBalances.preBAToken);
                 VmSafe.Log[] memory entries = vm.getRecordedLogs();
 
                 // Get post-act balances
@@ -378,11 +378,11 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
                 ownerBalances.postBToken = IERC20(p.bToken).balanceOf(owner);
                 ownerBalances.postCToken = IERC20(p.cToken).balanceOf(owner);
 
-                bytes memory closeEvent = entries[entries.length - 1].data;
+                bytes memory reduceEvent = entries[entries.length - 1].data;
                 uint256 gains;
 
                 assembly {
-                    gains := mload(add(closeEvent, 0x20))
+                    gains := mload(add(reduceEvent, 0x20))
                 }
 
                 // Assertions:
@@ -401,11 +401,11 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
         }
     }
 
-    /// @dev Tests that close function works when the position has gains and collateral token and base token are the same.
+    /// @dev Tests that the reduce function works when the position has gains and collateral token and base token are the same.
     /// @notice Test strategy:
     // - 1. Open a position. In doing so, extract the amount of base token added to Aave.
     // - 2. Mock Uniswap to ensure position gains.
-    // - 3. Close the position, such that all B_TOKEN is withdrawn and all C_TOKEN is withdrawn.
+    // - 3. Reduce the position, such that all B_TOKEN is withdrawn and all C_TOKEN is withdrawn.
 
     /// @notice Assertions:
     // - Position contract's (bToken) AToken balance should go to 0 (full withdraw).
@@ -416,7 +416,7 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
     // - Owner's cToken balance should increase by the amount of collateral withdrawn.
     // - Owner's bToken balance should increase by the amount of collateral withdrawn.
     // - The above should be true for all supported tokens.
-    function testFuzz_CloseExactInputSameCAndB(uint256 _dAmtRemainder) public {
+    function testFuzz_ReduceExactInputSameCAndB(uint256 _dAmtRemainder) public {
         // Setup
         ContractBalances memory contractBalances;
         OwnerBalances memory ownerBalances;
@@ -474,7 +474,7 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
                 vm.etch(SWAP_ROUTER, code);
 
                 // Act
-                IPosition(p.addr).close(TEST_POOL_FEE, false, 0, type(uint256).max, suppliedBAmt);
+                IPosition(p.addr).reduce(TEST_POOL_FEE, false, 0, type(uint256).max, suppliedBAmt);
                 entries = vm.getRecordedLogs();
 
                 // Get post-act balances
@@ -486,11 +486,11 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
                 ownerBalances.postBToken = IERC20(p.bToken).balanceOf(owner);
                 ownerBalances.postCToken = IERC20(p.cToken).balanceOf(owner);
 
-                bytes memory closeEvent = entries[entries.length - 1].data;
+                bytes memory reduceEvent = entries[entries.length - 1].data;
                 uint256 gains;
 
                 assembly {
-                    gains := mload(add(closeEvent, 0x20))
+                    gains := mload(add(reduceEvent, 0x20))
                 }
 
                 // Assertions:

@@ -28,7 +28,7 @@ import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IPosition } from "src/interfaces/IPosition.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
-contract PositionCloseLossesTest is Test, TokenUtils, DebtUtils {
+contract PositionReduceLossesTest is Test, TokenUtils, DebtUtils {
     /* solhint-disable func-name-mixedcase */
 
     struct TestPosition {
@@ -116,24 +116,24 @@ contract PositionCloseLossesTest is Test, TokenUtils, DebtUtils {
         }
     }
 
-    /// @dev Tests that close function works when the position has losses and collateral token and base token are different.
+    /// @dev Tests that the reduce function works when the position has losses and collateral token and base token are different.
     /// @notice Test strategy:
     // - 1. Open a position.
     // - 2. Mock Uniswap to ensure position losses.
     // - 3. Using screenshot, obtain max withdrawable collateral amount after withdrawing all B_TOKEN and partially repaying debt.
-    // - 4. Close the position.
+    // - 4. Reduce the position.
 
     /// @notice assertions.
     // - Position contract's (bToken) AToken balance should go to 0 (full withdraw).
     // - Position contract's (cToken) AToken balance should decrease by the amount withdrawn.
     // - Position contract's dToken balance should be 0; no gains, so all was used for swap.
     // - Position contract's debt on Aave should decrease by repayment (amount received from the swap).
-    // - Position contract's debt should be greater than 0 after close.
+    // - Position contract's debt should be greater than 0 after reduction.
     // - Owner's cToken balance should increase by the amount of collateral withdrawn.
     // - Owner's bToken balance should not increase; no gains.
     // - Position contract's gains should be 0.
     // - The above should be true for all supported tokens.
-    function test_CloseExactInputDiffCAndB(uint256 withdrawCAmt) public {
+    function test_ReduceExactInputDiffCAndB(uint256 withdrawCAmt) public {
         // Setup
         ContractBalances memory contractBalances;
         OwnerBalances memory ownerBalances;
@@ -193,7 +193,7 @@ contract PositionCloseLossesTest is Test, TokenUtils, DebtUtils {
                 // Act
                 /// @dev start event recorder
                 vm.recordLogs();
-                IPosition(p.addr).close(TEST_POOL_FEE, false, 0, withdrawCAmt, contractBalances.preBAToken);
+                IPosition(p.addr).reduce(TEST_POOL_FEE, false, 0, withdrawCAmt, contractBalances.preBAToken);
                 VmSafe.Log[] memory entries = vm.getRecordedLogs();
 
                 // Get post-act balances
@@ -205,11 +205,11 @@ contract PositionCloseLossesTest is Test, TokenUtils, DebtUtils {
                 ownerBalances.postBToken = IERC20(p.bToken).balanceOf(owner);
                 ownerBalances.postCToken = IERC20(p.cToken).balanceOf(owner);
 
-                bytes memory closeEvent = entries[entries.length - 1].data;
+                bytes memory reduceEvent = entries[entries.length - 1].data;
                 uint256 gains;
 
                 assembly {
-                    gains := mload(add(closeEvent, 0x20))
+                    gains := mload(add(reduceEvent, 0x20))
                 }
 
                 // Assertions
@@ -229,24 +229,24 @@ contract PositionCloseLossesTest is Test, TokenUtils, DebtUtils {
         }
     }
 
-    /// @dev Tests that close function works when the position has losses and collateral token and base token are the same.
+    /// @dev Tests that the reduce function works when the position has losses and collateral token and base token are the same.
     /// @notice Test strategy:
     // - 1. Open a position.
     // - 2. Mock Uniswap to ensure position losses.
     // - 3. Using screenshot, obtain max withdrawable collateral amount after withdrawing all B_TOKEN and partially repaying debt.
-    // - 4. Close the position.
+    // - 4. Reduce the position.
 
     /// @notice Assertions:
     // - Position contract's (bToken) AToken balance should decrease by the amount withdrawn.
     // - Position contract's (cToken) AToken balance should decrease by the amount withdrawn.
     // - Position contract's dToken balance should be 0; no gains, so all was used for swap.
     // - Position contract's debt on Aave should decrease by repayment (amount received from the swap).
-    // - Position contract's debt should be greater than 0 after close.
+    // - Position contract's debt should be greater than 0 after reduction.
     // - Position contract's gains should be 0.
     // - Owner's cToken balance should increase by the amount of collateral withdrawn.
     // - Owner's bToken balance should increase by the amount of collateral withdrawn.
     // - The above should be true for all supported tokens.
-    function test_CloseExactInputSameCAndB(uint256 withdrawCAmt) public {
+    function test_ReduceExactInputSameCAndB(uint256 withdrawCAmt) public {
         // Setup
         ContractBalances memory contractBalances;
         OwnerBalances memory ownerBalances;
@@ -315,7 +315,7 @@ contract PositionCloseLossesTest is Test, TokenUtils, DebtUtils {
                 withdrawCAmt = bound(withdrawCAmt, 1, maxCTokenWithdrawal);
 
                 // Act
-                IPosition(p.addr).close(TEST_POOL_FEE, false, 0, withdrawCAmt, suppliedBAmt);
+                IPosition(p.addr).reduce(TEST_POOL_FEE, false, 0, withdrawCAmt, suppliedBAmt);
                 entries = vm.getRecordedLogs();
 
                 // Get post-act balances
@@ -327,11 +327,11 @@ contract PositionCloseLossesTest is Test, TokenUtils, DebtUtils {
                 ownerBalances.postBToken = IERC20(p.bToken).balanceOf(owner);
                 ownerBalances.postCToken = IERC20(p.cToken).balanceOf(owner);
 
-                bytes memory closeEvent = entries[entries.length - 1].data;
+                bytes memory reduceEvent = entries[entries.length - 1].data;
                 uint256 gains;
 
                 assembly {
-                    gains := mload(add(closeEvent, 0x20))
+                    gains := mload(add(reduceEvent, 0x20))
                 }
 
                 // Assertions

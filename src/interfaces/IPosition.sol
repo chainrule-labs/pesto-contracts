@@ -69,7 +69,7 @@ interface IPosition is IDebtService {
     /// @param _swapAmtOutMin The min amount of output tokens from swap (supply 0 if _exactOutput = true).
     /// @param _withdrawCAmt The amount of C_TOKEN to withdraw (units: C_DECIMALS).
     /// @param _withdrawBAmt The amount of B_TOKEN to withdraw (units: B_DECIMALS).
-    function close(
+    function reduce(
         uint24 _poolFee,
         bool _exactOutput,
         uint256 _swapAmtOutMin,

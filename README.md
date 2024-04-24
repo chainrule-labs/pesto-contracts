@@ -27,8 +27,3 @@ Tests:
 Considerations:
 
 -   None at the moment🙂
-
-Cleanup:
-
--   [ ] Change `close()` to `reduce()` in `Position.sol`
--   [ ] Change all relevant test names related from `close` to `reduce`
