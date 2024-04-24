@@ -27,7 +27,7 @@ import { IAaveOracle } from "src/interfaces/aave/IAaveOracle.sol";
 import { IPosition } from "src/interfaces/IPosition.sol";
 import { IERC20 } from "src/interfaces/token/IERC20.sol";
 
-contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
+contract PositionReduceGainsTest is Test, TokenUtils, DebtUtils {
     /* solhint-disable func-name-mixedcase */
 
     struct TestPosition {
@@ -119,7 +119,7 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
         }
     }
 
-    /// @dev: Simulates close where not all B_TOKEN is withdrawn and swapped for D_TOKEN,
+    /// @dev: Simulates reduction where not all B_TOKEN is withdrawn and swapped for D_TOKEN,
     //        where D_TOKEN amount is less than total debt.
     // - Position contract's (bToken) AToken balance should decrease by _withdrawBAmt.
     // - Position contract's (cToken) AToken balance should decrease by _withdrawCAmt.
@@ -131,7 +131,7 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
     // - Owner's bToken balance should stay the same (no gains).
     // - Gains should be 0 because if there are any, they are unrealized.
     // - The above should be true for all supported tokens.
-    function testFuzz_ClosePartialExactInputDiffCAndB(uint256 _withdrawBAmt, uint256 _withdrawCAmt) public {
+    function testFuzz_ReducePartialExactInputDiffCAndB(uint256 _withdrawBAmt, uint256 _withdrawCAmt) public {
         // Setup
         ContractBalances memory contractBalances;
         OwnerBalances memory ownerBalances;
@@ -205,7 +205,7 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
                 // Act
                 /// @dev start event recorder
                 vm.recordLogs();
-                IPosition(p.addr).close(TEST_POOL_FEE, false, 0, _withdrawCAmt, _withdrawBAmt);
+                IPosition(p.addr).reduce(TEST_POOL_FEE, false, 0, _withdrawCAmt, _withdrawBAmt);
                 VmSafe.Log[] memory entries = vm.getRecordedLogs();
 
                 // Get post-act balances
@@ -217,11 +217,11 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
                 ownerBalances.postBToken = IERC20(p.bToken).balanceOf(owner);
                 ownerBalances.postCToken = IERC20(p.cToken).balanceOf(owner);
 
-                bytes memory closeEvent = entries[entries.length - 1].data;
+                bytes memory reduceEvent = entries[entries.length - 1].data;
                 uint256 gains;
 
                 assembly {
-                    gains := mload(add(closeEvent, 0x20))
+                    gains := mload(add(reduceEvent, 0x20))
                 }
 
                 // Assertions:
@@ -242,7 +242,7 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
         }
     }
 
-    /// @dev: Simulates close where not all B_TOKEN is withdrawn and swapped for D_TOKEN,
+    /// @dev: Simulates reduction where not all B_TOKEN is withdrawn and swapped for D_TOKEN,
     //        where D_TOKEN amount is less than total debt.
     // - Position contract's (cToken) AToken balance should decrease by (_withdrawCAmt + _withdrawBAmt).
     // - Position contract's (bToken) AToken balance should should equal its (cToken) AToken balance.
@@ -254,7 +254,7 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
     // - Owner's bToken balance should equal owner's cToken balance.
     // - Gains should be 0 because if there are any, they are unrealized.
     // - The above should be true for all supported tokens.
-    function testFuzz_ClosePartialExactInputSameCAndB(uint256 _withdrawBAmt, uint256 _withdrawCAmt) public {
+    function testFuzz_ReducePartialExactInputSameCAndB(uint256 _withdrawBAmt, uint256 _withdrawCAmt) public {
         // Setup
         ContractBalances memory contractBalances;
         OwnerBalances memory ownerBalances;
@@ -321,7 +321,7 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
                 // Act
                 /// @dev start event recorder
                 vm.recordLogs();
-                IPosition(p.addr).close(TEST_POOL_FEE, false, 0, _withdrawCAmt, _withdrawBAmt);
+                IPosition(p.addr).reduce(TEST_POOL_FEE, false, 0, _withdrawCAmt, _withdrawBAmt);
                 VmSafe.Log[] memory entries = vm.getRecordedLogs();
 
                 // Get post-act balances
@@ -333,11 +333,11 @@ contract PositionCloseGainsTest is Test, TokenUtils, DebtUtils {
                 ownerBalances.postBToken = IERC20(p.bToken).balanceOf(owner);
                 ownerBalances.postCToken = IERC20(p.cToken).balanceOf(owner);
 
-                bytes memory closeEvent = entries[entries.length - 1].data;
+                bytes memory reduceEvent = entries[entries.length - 1].data;
                 uint256 gains;
 
                 assembly {
-                    gains := mload(add(closeEvent, 0x20))
+                    gains := mload(add(reduceEvent, 0x20))
                 }
 
                 // Assertions:
